@@ -1,0 +1,83 @@
+import { router, Stack, useLocalSearchParams } from "expo-router";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Text } from "react-native";
+import { createHearing, getHearing, updateHearing } from "@/features/hearings/api";
+import { Button } from "@/shared/ui/Button";
+import { DateField } from "@/shared/ui/DateField";
+import { ScreenContainer } from "@/shared/ui/ScreenContainer";
+import { TextField } from "@/shared/ui/TextField";
+import { useTheme } from "@/shared/ui/theme";
+
+/** Schedule a hearing, or — with ?id= — edit an existing one. */
+export default function NewHearingScreen() {
+  const { caseId, id } = useLocalSearchParams<{ caseId?: string; id?: string }>();
+  const isEdit = !!id;
+  const [loaded, setLoaded] = useState(!isEdit);
+  const { colors, spacing } = useTheme();
+  const now = new Date();
+
+  const [hearingAt, setHearingAt] = useState<Date | null>(now);
+  const [court, setCourt] = useState("");
+  const [courtroom, setCourtroom] = useState("");
+  const [hearingType, setHearingType] = useState("");
+  const [purpose, setPurpose] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    getHearing(id)
+      .then((h) => {
+        setHearingAt(new Date(h.hearing_at));
+        setCourt(h.court ?? "");
+        setCourtroom(h.courtroom ?? "");
+        setHearingType(h.hearing_type ?? "");
+        setPurpose(h.purpose ?? "");
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "Couldn't load this hearing"))
+      .finally(() => setLoaded(true));
+  }, [id]);
+
+  const handleSave = async () => {
+    if (!hearingAt) {
+      setError("Choose the hearing date and time");
+      return;
+    }
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      if (id) await updateHearing(id, { hearingAt, court, courtroom, hearingType, purpose });
+      else await createHearing({ caseId: caseId!, hearingAt, court, courtroom, hearingType, purpose });
+      router.back();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!loaded) {
+    return (
+      <ScreenContainer style={{ alignItems: "center", justifyContent: "center" }}>
+        <Stack.Screen options={{ title: "Edit hearing" }} />
+        <ActivityIndicator color={colors.brand} />
+      </ScreenContainer>
+    );
+  }
+
+  return (
+    <ScreenContainer scroll>
+      <Stack.Screen options={{ title: isEdit ? "Edit hearing" : "Schedule hearing" }} />
+      {/* Same layout as the task form: title, description, date, then details. */}
+      <TextField label="Hearing title" placeholder="e.g. Argument, Evidence" value={hearingType} onChangeText={setHearingType} />
+      <TextField label="Description" placeholder="Purpose of the hearing" value={purpose} onChangeText={setPurpose} multiline numberOfLines={3} />
+      <DateField label="Date & time" value={hearingAt} onChange={setHearingAt} mode="datetime" />
+      <TextField label="Court" value={court} onChangeText={setCourt} />
+      <TextField label="Courtroom" value={courtroom} onChangeText={setCourtroom} />
+
+      {error ? <Text style={{ color: colors.danger, marginBottom: spacing.md }}>{error}</Text> : null}
+
+      <Button label={isEdit ? "Save changes" : "Schedule hearing"} onPress={handleSave} loading={isSubmitting} />
+    </ScreenContainer>
+  );
+}

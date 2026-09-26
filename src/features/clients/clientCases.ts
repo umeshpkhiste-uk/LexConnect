@@ -1,0 +1,9 @@
+import type { ClientCaseBrief } from "./api";
+
+/** A client's cases in the order to offer them: open cases newest first, or
+ * (only when every case is archived) the archived ones newest first. */
+export function clientCaseTargets(cases: ClientCaseBrief[]): ClientCaseBrief[] {
+  const sorted = [...cases].sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const open = sorted.filter((c) => !c.is_archived);
+  return open.length ? open : sorted;
+}

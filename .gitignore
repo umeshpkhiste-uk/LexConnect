@@ -31,6 +31,8 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
+.env.local
 .env*.local
 
 # typescript
@@ -41,3 +43,15 @@ example
 # generated native folders
 /ios
 /android
+# Added by code-review-graph
+.code-review-graph/
+
+# Netlify local state
+.netlify/
+
+# Local tooling (not part of the app)
+.venv/
+.kilo/
+.claude/settings.local.json
+.claude/*.bak
+coverage/

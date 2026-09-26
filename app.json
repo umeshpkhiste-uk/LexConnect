@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "CounselConnect",
+    "name": "LexConnect",
     "slug": "CounselConnect",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,11 +8,21 @@
     "scheme": "counselconnect",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/icon.png",
+      "bundleIdentifier": "com.counselconnect.app",
+      "buildNumber": "1",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "LexConnect needs access to your photos so you can attach images to posts, chats, receipts and client profiles.",
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "LexConnect needs camera access so you can take photos for posts, chats and payment receipts."
+      }
     },
     "android": {
+      "package": "com.counselconnect.app",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#EEF1F5",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -20,17 +30,48 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "output": "single",
+      "favicon": "./assets/images/favicon.png",
+      "name": "LexConnect",
+      "shortName": "LexConnect",
+      "themeColor": "#1E3A5F",
+      "backgroundColor": "#F8FAFC"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#F8FAFC",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 160,
+          "dark": {
+            "backgroundColor": "#0F172A",
+            "image": "./assets/images/splash-icon.png"
+          }
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "LexConnect uses Face ID so you can unlock the app and log in without typing your password."
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "LexConnect needs access to your photos so you can attach images to posts, chats, receipts and client profiles.",
+          "cameraPermission": "LexConnect needs camera access so you can take photos for posts, chats and payment receipts."
+        }
+      ],
+      "expo-video",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#1E3A5F",
+          "defaultChannel": "default"
         }
       ]
     ],
