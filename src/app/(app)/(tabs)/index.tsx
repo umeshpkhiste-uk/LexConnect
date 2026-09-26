@@ -10,7 +10,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -26,6 +25,7 @@ import { getMyProfile } from "@/features/profile/api";
 import { getPendingByCase } from "@/features/transactions/api";
 import { formatHearingDate, formatINR, toDateParam } from "@/shared/lib/format";
 import { ActionSheet, SheetAction } from "@/shared/ui/ActionSheet";
+import { useAppWidth } from "@/shared/ui/appFrame";
 import { useTheme } from "@/shared/ui/theme";
 
 const CLOSED_STATUSES: CaseSummary["status"][] = ["disposed", "closed", "archived"];
@@ -76,7 +76,8 @@ function sortByNextHearing(cases: CaseSummary[]): CaseSummary[] {
 
 export default function HomeScreen() {
   const { colors, spacing, radius, typography } = useTheme();
-  const { width } = useWindowDimensions();
+  // Phone width, or the app's centred column on the web.
+  const width = useAppWidth();
   const [name, setName] = useState<string | null>(null);
   const [todayItems, setTodayItems] = useState<AgendaItem[]>([]);
   const [cases, setCases] = useState<CaseSummary[]>([]);

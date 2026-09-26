@@ -6,6 +6,7 @@ import { getSavedLoginUser, isBiometricEnabledFor, loginWithSavedSession } from 
 import { getAppLockMethod, rememberLockedAccount } from "@/features/applock/appLock";
 import { AppLockScreen } from "@/features/applock/AppLockScreen";
 import { PresenceProvider } from "@/features/presence/PresenceProvider";
+import { AppFrame } from "@/shared/ui/appFrame";
 import { useTheme } from "@/shared/ui/theme";
 import { restoreThemePreference } from "@/shared/ui/themePreference";
 
@@ -154,11 +155,13 @@ export default function RootLayout() {
 
   return (
     <NavigationTheme>
-      <AuthProvider>
-        <PresenceProvider>
-          <RootNavigator />
-        </PresenceProvider>
-      </AuthProvider>
+      <AppFrame>
+        <AuthProvider>
+          <PresenceProvider>
+            <RootNavigator />
+          </PresenceProvider>
+        </AuthProvider>
+      </AppFrame>
     </NavigationTheme>
   );
 }

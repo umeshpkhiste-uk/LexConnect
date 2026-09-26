@@ -11,7 +11,6 @@ import {
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
 } from "react-native";
 import { getEnabledProviders, signInWithProvider, SOCIAL_LABEL, SocialProvider } from "@/features/auth/socialLogin";
 import { getLastLockedAccountMethod } from "@/features/applock/appLock";
@@ -19,6 +18,7 @@ import { getSavedLoginUser } from "@/features/biometric/biometric";
 import { BiometricLoginButton } from "@/features/biometric/BiometricLoginButton";
 import { ScreenContainer } from "@/shared/ui/ScreenContainer";
 import { AppLogo } from "@/shared/ui/AppLogo";
+import { useAppWidth } from "@/shared/ui/appFrame";
 import { useTheme } from "@/shared/ui/theme";
 
 const SLIDES = [
@@ -36,7 +36,8 @@ const SOCIAL: { provider: SocialProvider; icon: keyof typeof Ionicons.glyphMap; 
 
 export default function WelcomeScreen() {
   const { colors, spacing, radius, typography } = useTheme();
-  const { width } = useWindowDimensions();
+  // Phone width, or the app's centred column on the web.
+  const width = useAppWidth();
   const [page, setPage] = useState(0);
   // ScreenContainer pads the content by spacing.lg on each side.
   const slideWidth = width - spacing.lg * 2;
@@ -86,7 +87,17 @@ export default function WelcomeScreen() {
         <View style={{ marginBottom: spacing.lg }}>
           <AppLogo size={112} />
         </View>
-        <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} onScroll={onScroll} scrollEventThrottle={16}>
+        {/* Exactly one slide wide: inside the centred column a horizontal
+            ScrollView would otherwise grow to fit all slides (on the web it
+            then showed the gap between two slides). */}
+        <ScrollView
+          horizontal
+          pagingEnabled
+          style={{ width: slideWidth, flexGrow: 0 }}
+          showsHorizontalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+        >
           {SLIDES.map((slide) => (
             <View key={slide.title} style={[styles.slide, { width: slideWidth }]}>
               <Text style={[typography.display, { color: colors.textPrimary, textAlign: "center" }]}>{slide.title}</Text>
