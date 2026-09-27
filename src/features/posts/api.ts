@@ -303,15 +303,6 @@ export async function deletePost(post: Pick<FeedPost, "id" | "image_path" | "vid
   if (post.attachments?.length) await supabase.storage.from(ATTACHMENT_BUCKET).remove(post.attachments.map((a) => a.file_path));
 }
 
-/** Bumps a post's share counter — called after the native share sheet opens
- * successfully. Any advocate who can see the post may share it, not just
- * its author, so this goes through a narrowly-scoped RPC rather than a
- * plain row update (see migration 0041). */
-export async function incrementPostShare(postId: string): Promise<void> {
-  const { error } = await supabase.rpc("increment_post_share", { p_post_id: postId });
-  if (error) throw new Error(error.message);
-}
-
 export async function toggleReaction(postId: string, kind: ReactionKind, currentlyOn: boolean): Promise<void> {
   const me = await currentUserId();
   if (currentlyOn) {

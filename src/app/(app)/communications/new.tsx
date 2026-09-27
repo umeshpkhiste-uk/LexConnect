@@ -30,8 +30,12 @@ export default function NewCommunicationScreen() {
   const [followUp, setFollowUp] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [summaryTouched, setSummaryTouched] = useState(false);
+
+  const summaryError = summaryTouched && !summary.trim() ? "Add a short summary" : null;
 
   const handleSave = async () => {
+    setSummaryTouched(true);
     if (!occurredAt) {
       setError("Choose when this happened");
       return;
@@ -66,8 +70,24 @@ export default function NewCommunicationScreen() {
       </ScrollView>
 
       <DateField label="Date & time" value={occurredAt} onChange={setOccurredAt} mode="datetime" maximumDate={new Date()} />
-      <TextField label="Summary" value={summary} onChangeText={setSummary} multiline numberOfLines={3} />
-      <TextField label="Follow-up" value={followUp} onChangeText={setFollowUp} multiline numberOfLines={2} />
+      <TextField
+        label="Summary *"
+        placeholder="e.g. Called client to discuss next hearing date"
+        value={summary}
+        onChangeText={setSummary}
+        onBlur={() => setSummaryTouched(true)}
+        multiline
+        numberOfLines={3}
+        error={summaryError ?? undefined}
+      />
+      <TextField
+        label="Follow-up"
+        placeholder="e.g. Send draft affidavit for client's review"
+        value={followUp}
+        onChangeText={setFollowUp}
+        multiline
+        numberOfLines={2}
+      />
 
       {error ? <Text style={{ color: colors.danger, marginBottom: spacing.md }}>{error}</Text> : null}
 

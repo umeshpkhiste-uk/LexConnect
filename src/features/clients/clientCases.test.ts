@@ -1,6 +1,6 @@
 import { clientCaseTargets } from "./clientCases";
 
-const c = (id: string, created_at: string, is_archived = false) => ({ id, title: id, status: "active", created_at, is_archived });
+const c = (id: string, created_at: string, is_archived = false) => ({ id, title: id, court: null, created_at, is_archived });
 
 describe("clientCaseTargets", () => {
   it("lists open cases newest first and skips archived ones", () => {

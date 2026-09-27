@@ -5,7 +5,9 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { Client, ClientType, createClientRecord, getClient, updateClient, uploadClientPhoto } from "@/features/clients/api";
 import { ClientAvatar } from "@/features/clients/ClientAvatar";
+import { gstinError, mobileError, normalizeGstin, normalizeIndianMobile, normalizePan, panError } from "@/shared/lib/validation";
 import { Button } from "@/shared/ui/Button";
+import { DateField, fromDateOnly, toDateOnly } from "@/shared/ui/DateField";
 import { ScreenContainer } from "@/shared/ui/ScreenContainer";
 import { SegmentedControl } from "@/shared/ui/SegmentedControl";
 import { TextField } from "@/shared/ui/TextField";
@@ -25,8 +27,22 @@ export default function NewClientScreen() {
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
+  const [contactPersonName, setContactPersonName] = useState("");
+  const [contactPersonDesignation, setContactPersonDesignation] = useState("");
+  const [gstin, setGstin] = useState("");
+  const [registrationNumber, setRegistrationNumber] = useState("");
+  const [occupation, setOccupation] = useState("");
+  const [panNumber, setPanNumber] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [touched, setTouched] = useState<{ fullName?: boolean; phone?: boolean; gstin?: boolean; pan?: boolean }>({});
+
+  const isOrganization = clientType === "organization";
+  const fullNameError = touched.fullName && !fullName.trim() ? "Client name is required" : null;
+  const phoneErr = touched.phone ? mobileError(phone) : null;
+  const gstinErr = touched.gstin ? gstinError(gstin) : null;
+  const panErr = touched.pan ? panError(panNumber) : null;
 
   useEffect(() => {
     if (!id) return;
@@ -39,26 +55,56 @@ export default function NewClientScreen() {
         setEmail(c.email ?? "");
         setAddress(c.address ?? "");
         setNotes(c.notes ?? "");
+        setContactPersonName(c.contact_person_name ?? "");
+        setContactPersonDesignation(c.contact_person_designation ?? "");
+        setGstin(c.gstin ?? "");
+        setRegistrationNumber(c.registration_number ?? "");
+        setOccupation(c.occupation ?? "");
+        setPanNumber(c.pan_number ?? "");
+        setDateOfBirth(fromDateOnly(c.date_of_birth));
       })
       .catch((err) => setLoadError(err instanceof Error ? err.message : "Couldn't load this client"));
   }, [id]);
 
   const handleSave = async () => {
+    setTouched({ fullName: true, phone: true, gstin: true, pan: true });
     if (!fullName.trim()) {
       setError("Client name is required");
       return;
     }
+    if (mobileError(phone)) {
+      setError("Enter a valid mobile number, or leave it blank");
+      return;
+    }
+    if (isOrganization && gstinError(gstin)) {
+      setError(`GSTIN: ${gstinError(gstin)}`);
+      return;
+    }
+    if (!isOrganization && panError(panNumber)) {
+      setError(`PAN: ${panError(panNumber)}`);
+      return;
+    }
     setError(null);
     setIsSubmitting(true);
+    const phoneValue = phone.trim() ? normalizeIndianMobile(phone) : null;
+    const gstinValue = isOrganization && gstin.trim() ? normalizeGstin(gstin) : null;
+    const panValue = !isOrganization && panNumber.trim() ? normalizePan(panNumber) : null;
     try {
       if (existing) {
         await updateClient(existing.id, {
           fullName,
           clientType,
-          phone: phone.trim() || null,
+          phone: phoneValue,
           email: email.trim() || null,
           address: address.trim() || null,
           notes: notes.trim() || null,
+          contactPersonName: isOrganization ? contactPersonName.trim() || null : null,
+          contactPersonDesignation: isOrganization ? contactPersonDesignation.trim() || null : null,
+          gstin: gstinValue,
+          registrationNumber: isOrganization ? registrationNumber.trim() || null : null,
+          occupation: !isOrganization ? occupation.trim() || null : null,
+          panNumber: panValue,
+          dateOfBirth: !isOrganization ? toDateOnly(dateOfBirth) : null,
         });
         if (photo) {
           await uploadClientPhoto(existing, photo.uri, photo.mimeType).catch(() =>
@@ -68,7 +114,21 @@ export default function NewClientScreen() {
         router.back();
         return;
       }
-      const client = await createClientRecord({ fullName, clientType, phone, email, address, notes });
+      const client = await createClientRecord({
+        fullName,
+        clientType,
+        phone: phoneValue ?? "",
+        email,
+        address,
+        notes,
+        contactPersonName,
+        contactPersonDesignation,
+        gstin: gstinValue ?? "",
+        registrationNumber,
+        occupation,
+        panNumber: panValue ?? "",
+        dateOfBirth: toDateOnly(dateOfBirth),
+      });
       if (photo) {
         // The client is saved either way; a failed photo can be added later.
         await uploadClientPhoto(client, photo.uri, photo.mimeType).catch(() =>
@@ -142,12 +202,132 @@ export default function NewClientScreen() {
         ]}
         value={clientType}
         onChange={(key) => setClientType(key as ClientType)}
+        disabled={isEdit}
       />
-      <TextField label="Full name" value={fullName} onChangeText={setFullName} autoCapitalize="words" />
-      <TextField label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-      <TextField label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
-      <TextField label="Address" value={address} onChangeText={setAddress} multiline numberOfLines={2} />
-      <TextField label="Notes" value={notes} onChangeText={setNotes} multiline numberOfLines={3} />
+      {isEdit ? (
+        <Text style={[typography.caption, { color: colors.textSecondary, marginTop: -spacing.sm, marginBottom: spacing.md }]}>
+          Client type can&apos;t be changed after the client is created.
+        </Text>
+      ) : null}
+      <TextField
+        label={isOrganization ? "Organization name" : "Full name"}
+        placeholder={isOrganization ? "e.g. Sharma Traders Pvt. Ltd." : "e.g. Ramesh Kumar"}
+        value={fullName}
+        onChangeText={setFullName}
+        onBlur={() => setTouched((t) => ({ ...t, fullName: true }))}
+        autoCapitalize="words"
+        error={fullNameError ?? undefined}
+      />
+      <TextField
+        label="Phone"
+        placeholder="e.g. 98765 43210"
+        value={phone}
+        onChangeText={setPhone}
+        onBlur={() => {
+          setTouched((t) => ({ ...t, phone: true }));
+          const tidy = normalizeIndianMobile(phone);
+          if (tidy) setPhone(tidy);
+        }}
+        keyboardType="phone-pad"
+        maxLength={20}
+        error={phoneErr ?? undefined}
+      />
+      <TextField
+        label="Email"
+        placeholder="e.g. ramesh@example.com"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
+      />
+      <TextField
+        label="Address"
+        placeholder="e.g. 12, MG Road, Pune, Maharashtra"
+        value={address}
+        onChangeText={setAddress}
+        multiline
+        numberOfLines={2}
+      />
+      {!isOrganization ? (
+        <>
+          <Text style={[typography.subtitle, { color: colors.brand, marginTop: spacing.sm, marginBottom: spacing.sm }]}>
+            Individual details
+          </Text>
+          <TextField
+            label="Occupation"
+            placeholder="e.g. Business owner"
+            value={occupation}
+            onChangeText={setOccupation}
+          />
+          <TextField
+            label="PAN number"
+            placeholder="e.g. ABCDE1234F"
+            value={panNumber}
+            onChangeText={setPanNumber}
+            onBlur={() => {
+              setTouched((t) => ({ ...t, pan: true }));
+              const tidy = normalizePan(panNumber);
+              if (tidy) setPanNumber(tidy);
+            }}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            maxLength={10}
+            error={panErr ?? undefined}
+          />
+          <DateField label="Date of birth" value={dateOfBirth} onChange={setDateOfBirth} maximumDate={new Date()} placeholder="Not set" optional />
+        </>
+      ) : null}
+      {isOrganization ? (
+        <>
+          <Text style={[typography.subtitle, { color: colors.brand, marginTop: spacing.sm, marginBottom: spacing.sm }]}>
+            Organization details
+          </Text>
+          <TextField
+            label="Contact person name"
+            placeholder="e.g. Priya Mehta"
+            value={contactPersonName}
+            onChangeText={setContactPersonName}
+            autoCapitalize="words"
+          />
+          <TextField
+            label="Contact person designation"
+            placeholder="e.g. Legal Manager"
+            value={contactPersonDesignation}
+            onChangeText={setContactPersonDesignation}
+          />
+          <TextField
+            label="GSTIN"
+            placeholder="e.g. 27AAAAA0000A1Z5"
+            value={gstin}
+            onChangeText={setGstin}
+            onBlur={() => {
+              setTouched((t) => ({ ...t, gstin: true }));
+              const tidy = normalizeGstin(gstin);
+              if (tidy) setGstin(tidy);
+            }}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            maxLength={15}
+            error={gstinErr ?? undefined}
+          />
+          <TextField
+            label="Registration / CIN number"
+            placeholder="e.g. U74999MH2015PTC123456"
+            value={registrationNumber}
+            onChangeText={setRegistrationNumber}
+            autoCapitalize="characters"
+          />
+        </>
+      ) : null}
+
+      <TextField
+        label="Notes"
+        placeholder="e.g. Prefers WhatsApp updates after 6 PM"
+        value={notes}
+        onChangeText={setNotes}
+        multiline
+        numberOfLines={3}
+      />
 
       {error ? <Text style={{ color: colors.danger, marginBottom: spacing.md }}>{error}</Text> : null}
 

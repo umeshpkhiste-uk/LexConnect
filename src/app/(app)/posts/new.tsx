@@ -20,6 +20,9 @@ export default function NewPostScreen() {
   const [files, setFiles] = useState<PickedFile[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [contentTouched, setContentTouched] = useState(false);
+
+  const contentError = contentTouched && !content.trim() ? "Write something to post" : null;
 
   // A post's files are separate from its one photo/video — e.g. a slide
   // deck or a spreadsheet shared alongside an update.
@@ -90,6 +93,7 @@ export default function NewPostScreen() {
   };
 
   const handlePost = async () => {
+    setContentTouched(true);
     if (!content.trim()) {
       setError("Write something to post");
       return;
@@ -110,12 +114,14 @@ export default function NewPostScreen() {
     <ScreenContainer scroll>
       <TextField
         label="Share a professional update"
-        placeholder="What's on your mind?"
+        placeholder="e.g. Successfully argued for a stay order in the High Court today"
         value={content}
         onChangeText={setContent}
+        onBlur={() => setContentTouched(true)}
         multiline
         numberOfLines={6}
         style={{ height: 140, paddingTop: spacing.sm, textAlignVertical: "top" }}
+        error={contentError ?? undefined}
       />
 
       {video ? (

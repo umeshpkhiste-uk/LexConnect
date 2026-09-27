@@ -84,10 +84,38 @@ export default function HearingDetailScreen() {
       <Text style={[typography.subtitle, { color: colors.textPrimary, marginBottom: spacing.sm }]}>
         Record outcome
       </Text>
-      <TextField label="What happened / outcome" value={outcome} onChangeText={setOutcome} multiline numberOfLines={3} />
-      <TextField label="Arguments" value={argumentsText} onChangeText={setArgumentsText} multiline numberOfLines={2} />
-      <TextField label="Orders" value={orders} onChangeText={setOrders} multiline numberOfLines={2} />
-      <TextField label="Next action" value={nextAction} onChangeText={setNextAction} multiline numberOfLines={2} />
+      <TextField
+        label="What happened / outcome"
+        placeholder="e.g. Matter adjourned for further arguments"
+        value={outcome}
+        onChangeText={setOutcome}
+        multiline
+        numberOfLines={3}
+      />
+      <TextField
+        label="Arguments"
+        placeholder="e.g. Argued limitation bar under Section 3"
+        value={argumentsText}
+        onChangeText={setArgumentsText}
+        multiline
+        numberOfLines={2}
+      />
+      <TextField
+        label="Orders"
+        placeholder="e.g. Interim stay granted till next date"
+        value={orders}
+        onChangeText={setOrders}
+        multiline
+        numberOfLines={2}
+      />
+      <TextField
+        label="Next action"
+        placeholder="e.g. File rejoinder before next hearing"
+        value={nextAction}
+        onChangeText={setNextAction}
+        multiline
+        numberOfLines={2}
+      />
       <DateField
         label="Next hearing"
         value={nextHearingAt}

@@ -28,7 +28,6 @@ import { ActionSheet, SheetAction } from "@/shared/ui/ActionSheet";
 import { useAppWidth } from "@/shared/ui/appFrame";
 import { useTheme } from "@/shared/ui/theme";
 
-const CLOSED_STATUSES: CaseSummary["status"][] = ["disposed", "closed", "archived"];
 const UPCOMING_DAYS_AHEAD = 60;
 const UPCOMING_DAY_LIMIT = 7;
 
@@ -136,12 +135,9 @@ export default function HomeScreen() {
     load().finally(() => setIsRefreshing(false));
   };
 
-  // Same cases as the Cases tab: open ones first (soonest hearing first),
-  // then disposed / closed / archived ones, so nothing is hidden.
+  // Same cases as the Cases tab, soonest hearing first.
   const currentCases = useMemo(() => {
-    const open = sortByNextHearing(cases.filter((c) => !CLOSED_STATUSES.includes(c.status)));
-    const closed = sortByNextHearing(cases.filter((c) => CLOSED_STATUSES.includes(c.status)));
-    const all = [...open, ...closed];
+    const all = sortByNextHearing(cases);
     const query = search.trim().toLowerCase();
     if (!query) return all;
     return all.filter((c) => [c.title, c.clients?.full_name, c.case_number].some((field) => field?.toLowerCase().includes(query)));

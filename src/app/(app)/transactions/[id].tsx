@@ -14,6 +14,7 @@ import {
   TransactionDetail,
   updateTransaction,
 } from "@/features/transactions/api";
+import { confirmAsync } from "@/shared/lib/confirm";
 import { formatINR } from "@/shared/lib/format";
 import { fromDateOnly } from "@/shared/lib/dateInput";
 import { Button } from "@/shared/ui/Button";
@@ -48,6 +49,7 @@ export default function TransactionDetailsScreen() {
   const [notes, setNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [amountTouched, setAmountTouched] = useState(false);
 
   useEffect(() => {
     getTransaction(id)
@@ -83,13 +85,18 @@ export default function TransactionDetailsScreen() {
     setReferenceNumber(tx.reference_number ?? "");
     setNotes(tx.notes ?? "");
     setError(null);
+    setAmountTouched(false);
     setIsEditing(true);
   };
 
+  const amountFormatError =
+    amountTouched && (!amount.trim() || Number.isNaN(Number(amount)) || Number(amount) <= 0) ? "Enter a valid amount" : null;
+
   const saveEdit = async () => {
+    setAmountTouched(true);
     const amountValue = Number(amount);
     if (!amount.trim() || Number.isNaN(amountValue) || amountValue <= 0) {
-      setError("Enter a valid amount");
+      setError("Amount: enter a valid amount");
       return;
     }
     if (!date) {
@@ -116,28 +123,22 @@ export default function TransactionDetailsScreen() {
     }
   };
 
-  const confirmDelete = () =>
-    Alert.alert(
+  const confirmDelete = async () => {
+    const confirmed = await confirmAsync(
       "Delete this entry?",
       "This removes it permanently, along with its receipt if one was attached. This can't be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            setIsDeleting(true);
-            try {
-              await deleteTransaction(tx);
-              router.back();
-            } catch (err) {
-              setIsDeleting(false);
-              Alert.alert("Couldn't delete entry", err instanceof Error ? err.message : "Something went wrong");
-            }
-          },
-        },
-      ]
+      "Delete"
     );
+    if (!confirmed) return;
+    setIsDeleting(true);
+    try {
+      await deleteTransaction(tx);
+      router.back();
+    } catch (err) {
+      setIsDeleting(false);
+      Alert.alert("Couldn't delete entry", err instanceof Error ? err.message : "Something went wrong");
+    }
+  };
 
   const rows: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string | null }[] = [
     { icon: "person-outline", label: "Client", value: tx.clients?.full_name ?? null },
@@ -173,16 +174,28 @@ export default function TransactionDetailsScreen() {
           <Text style={[typography.label, { color: tone }]}>{isExpense ? "Expense" : "Received"}</Text>
         </View>
         {isEditing ? (
-          <View style={[styles.amountEdit, { borderColor: colors.brand, borderRadius: radius.md, marginTop: spacing.sm }]}>
-            <Text style={[typography.display, { color: tone, fontSize: 28 }]}>{isExpense ? "−₹" : "₹"}</Text>
-            <TextInput
-              value={amount}
-              onChangeText={setAmount}
-              keyboardType="decimal-pad"
-              autoFocus
-              style={[typography.display, { color: tone, fontSize: 28, flex: 1 }]}
-            />
-          </View>
+          <>
+            <View
+              style={[
+                styles.amountEdit,
+                { borderColor: amountFormatError ? colors.danger : colors.brand, borderRadius: radius.md, marginTop: spacing.sm },
+              ]}
+            >
+              <Text style={[typography.display, { color: tone, fontSize: 28 }]}>{isExpense ? "−₹" : "₹"}</Text>
+              <TextInput
+                value={amount}
+                onChangeText={setAmount}
+                onBlur={() => setAmountTouched(true)}
+                placeholder="e.g. 5000"
+                keyboardType="decimal-pad"
+                autoFocus
+                style={[typography.display, { color: tone, fontSize: 28, flex: 1 }]}
+              />
+            </View>
+            {amountFormatError ? (
+              <Text style={[typography.caption, { color: colors.danger, marginTop: spacing.xs }]}>{amountFormatError}</Text>
+            ) : null}
+          </>
         ) : (
           <Text style={[typography.display, { color: tone, fontSize: 34, marginTop: spacing.sm }]}>
             {isExpense ? "−" : ""}
@@ -203,8 +216,8 @@ export default function TransactionDetailsScreen() {
             options={PAYMENT_METHODS.map((m) => ({ value: m, label: m }))}
             onChange={setPaymentMethod}
           />
-          <TextField label="Reference" placeholder="Optional" value={referenceNumber} onChangeText={setReferenceNumber} />
-          <TextField label="Notes" placeholder="Optional" value={notes} onChangeText={setNotes} multiline />
+          <TextField label="Reference" placeholder="e.g. Cheque no. 452317" value={referenceNumber} onChangeText={setReferenceNumber} />
+          <TextField label="Notes" placeholder="e.g. Paid via UPI" value={notes} onChangeText={setNotes} multiline />
 
           {error ? <Text style={{ color: colors.danger, marginBottom: spacing.sm }}>{error}</Text> : null}
           <Button label="Save changes" onPress={saveEdit} loading={isSaving} pill />

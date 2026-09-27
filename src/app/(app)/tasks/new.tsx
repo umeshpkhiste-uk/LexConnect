@@ -24,6 +24,9 @@ export default function NewTaskScreen() {
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [titleTouched, setTitleTouched] = useState(false);
+
+  const titleError = titleTouched && !title.trim() ? "Task title is required" : null;
 
   useEffect(() => {
     if (!id) return;
@@ -39,6 +42,7 @@ export default function NewTaskScreen() {
   }, [id]);
 
   const handleSave = async () => {
+    setTitleTouched(true);
     if (!title.trim()) {
       setError("Task title is required");
       return;
@@ -75,8 +79,22 @@ export default function NewTaskScreen() {
   return (
     <ScreenContainer scroll>
       <Stack.Screen options={{ title: isEdit ? "Edit task" : "New task" }} />
-      <TextField label="Task title" value={title} onChangeText={setTitle} />
-      <TextField label="Description" value={description} onChangeText={setDescription} multiline numberOfLines={3} />
+      <TextField
+        label="Task title *"
+        placeholder="e.g. File written statement"
+        value={title}
+        onChangeText={setTitle}
+        onBlur={() => setTitleTouched(true)}
+        error={titleError ?? undefined}
+      />
+      <TextField
+        label="Description"
+        placeholder="e.g. Draft and file written statement in response to plaint"
+        value={description}
+        onChangeText={setDescription}
+        multiline
+        numberOfLines={3}
+      />
       <DateField label="Due date" value={dueDate} onChange={setDueDate} placeholder="No due date" optional />
 
       <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: "600", marginBottom: spacing.xs }}>

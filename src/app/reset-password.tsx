@@ -76,6 +76,7 @@ export default function ResetPasswordScreen() {
         render={({ field }) => (
           <TextField
             label="New password"
+            placeholder="At least 8 characters, 1 uppercase, 1 number"
             secureTextEntry
             autoComplete="new-password"
             value={field.value}
@@ -90,6 +91,7 @@ export default function ResetPasswordScreen() {
         render={({ field }) => (
           <TextField
             label="Confirm new password"
+            placeholder="Re-enter your new password"
             secureTextEntry
             value={field.value}
             onChangeText={field.onChange}

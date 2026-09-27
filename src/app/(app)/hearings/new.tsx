@@ -23,6 +23,9 @@ export default function NewHearingScreen() {
   const [purpose, setPurpose] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [touched, setTouched] = useState<{ hearingType?: boolean }>({});
+
+  const hearingTypeError = touched.hearingType && !hearingType.trim() ? "Hearing title is required" : null;
 
   useEffect(() => {
     if (!id) return;
@@ -39,6 +42,11 @@ export default function NewHearingScreen() {
   }, [id]);
 
   const handleSave = async () => {
+    setTouched({ hearingType: true });
+    if (!hearingType.trim()) {
+      setError("Hearing title is required");
+      return;
+    }
     if (!hearingAt) {
       setError("Choose the hearing date and time");
       return;
@@ -69,11 +77,25 @@ export default function NewHearingScreen() {
     <ScreenContainer scroll>
       <Stack.Screen options={{ title: isEdit ? "Edit hearing" : "Schedule hearing" }} />
       {/* Same layout as the task form: title, description, date, then details. */}
-      <TextField label="Hearing title" placeholder="e.g. Argument, Evidence" value={hearingType} onChangeText={setHearingType} />
-      <TextField label="Description" placeholder="Purpose of the hearing" value={purpose} onChangeText={setPurpose} multiline numberOfLines={3} />
+      <TextField
+        label="Hearing title *"
+        placeholder="e.g. Argument, Evidence"
+        value={hearingType}
+        onChangeText={setHearingType}
+        onBlur={() => setTouched((t) => ({ ...t, hearingType: true }))}
+        error={hearingTypeError ?? undefined}
+      />
+      <TextField
+        label="Description"
+        placeholder="e.g. Cross-examination of the plaintiff's witness"
+        value={purpose}
+        onChangeText={setPurpose}
+        multiline
+        numberOfLines={3}
+      />
       <DateField label="Date & time" value={hearingAt} onChange={setHearingAt} mode="datetime" />
-      <TextField label="Court" value={court} onChangeText={setCourt} />
-      <TextField label="Courtroom" value={courtroom} onChangeText={setCourtroom} />
+      <TextField label="Court" placeholder="e.g. Bombay High Court" value={court} onChangeText={setCourt} />
+      <TextField label="Courtroom" placeholder="e.g. Court Room 4" value={courtroom} onChangeText={setCourtroom} />
 
       {error ? <Text style={{ color: colors.danger, marginBottom: spacing.md }}>{error}</Text> : null}
 

@@ -7,6 +7,7 @@ import { CaseDocument, deleteDocument, getDocumentSignedUrl, listDocumentsForCas
 import { CASE_TYPE_OPTIONS } from "@/shared/data/caseTypes";
 import { COURT_OPTIONS } from "@/shared/data/courts";
 import { formatHearingDate, formatINR } from "@/shared/lib/format";
+import { caseNumberError, normalizeCaseNumber } from "@/shared/lib/validation";
 import { Button } from "@/shared/ui/Button";
 import { SelectField } from "@/shared/ui/SelectField";
 import { DateField, fromDateOnly, toDateOnly } from "@/shared/ui/DateField";
@@ -265,20 +266,31 @@ function CaseEditForm({ caseDetail, onCancel, onSaved }: { caseDetail: CaseDetai
   const [agreedFee, setAgreedFee] = useState(caseDetail.agreed_fee !== null ? String(Number(caseDetail.agreed_fee)) : "");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [touched, setTouched] = useState<{ title?: boolean; caseNumber?: boolean; agreedFee?: boolean }>({});
+
+  const titleErr = touched.title && !title.trim() ? "Case title is required" : null;
+  const caseNumberErr = touched.caseNumber ? caseNumberError(caseNumber) : null;
+  const agreedFeeErr =
+    touched.agreedFee && agreedFee.trim() && (Number.isNaN(Number(agreedFee)) || Number(agreedFee) < 0)
+      ? "Enter a valid amount"
+      : null;
 
   const save = async () => {
+    setTouched({ title: true, caseNumber: true, agreedFee: true });
     if (!title.trim()) return setError("Case title is required");
+    if (caseNumberError(caseNumber)) return setError("Case number: use the format NUMBER/YEAR, e.g. 482/2024");
     const fee = agreedFee.trim() ? Number(agreedFee) : null;
-    if (fee !== null && (Number.isNaN(fee) || fee < 0)) return setError("Enter a valid total fee");
+    if (fee !== null && (Number.isNaN(fee) || fee < 0)) return setError("Total fees agreed: enter a valid amount");
     if (filingDate && registrationDate && registrationDate < filingDate) {
       return setError("Registration date can't be before the filing date");
     }
     setError(null);
     setIsSaving(true);
+    const caseNumberValue = caseNumber.trim() ? normalizeCaseNumber(caseNumber) ?? caseNumber.trim() : "";
     try {
       await updateCase(caseDetail.id, {
         title,
-        caseNumber: caseNumber.trim() || null,
+        caseNumber: caseNumberValue || null,
         caseType: caseType.trim() || null,
         court: court.trim() || null,
         bench: bench.trim() || null,
@@ -308,8 +320,27 @@ function CaseEditForm({ caseDetail, onCancel, onSaved }: { caseDetail: CaseDetai
     >
       <View style={card}>
         <SectionTitle icon="folder-open-outline" title="Case" />
-        <TextField label="Case title *" value={title} onChangeText={setTitle} />
-        <TextField label="Case number" value={caseNumber} onChangeText={setCaseNumber} autoCapitalize="characters" />
+        <TextField
+          label="Case title *"
+          placeholder="e.g. Sharma vs. Verma"
+          value={title}
+          onChangeText={setTitle}
+          onBlur={() => setTouched((t) => ({ ...t, title: true }))}
+          error={titleErr ?? undefined}
+        />
+        <TextField
+          label="Case number"
+          placeholder="e.g. 482/2024"
+          value={caseNumber}
+          onChangeText={setCaseNumber}
+          onBlur={() => {
+            setTouched((t) => ({ ...t, caseNumber: true }));
+            const tidy = normalizeCaseNumber(caseNumber);
+            if (tidy) setCaseNumber(tidy);
+          }}
+          autoCapitalize="characters"
+          error={caseNumberErr ?? undefined}
+        />
         <SelectField
           label="Case type"
           icon="folder-outline"
@@ -320,8 +351,16 @@ function CaseEditForm({ caseDetail, onCancel, onSaved }: { caseDetail: CaseDetai
           searchable
           placeholder="Select case type"
         />
-        <TextField label="Opposite party" value={oppositeParty} onChangeText={setOppositeParty} />
-        <TextField label="Total fees agreed (₹)" placeholder="Not set" value={agreedFee} onChangeText={setAgreedFee} keyboardType="decimal-pad" />
+        <TextField label="Opposite party" placeholder="e.g. Suresh Traders" value={oppositeParty} onChangeText={setOppositeParty} />
+        <TextField
+          label="Total fees agreed (₹)"
+          placeholder="e.g. 25000"
+          value={agreedFee}
+          onChangeText={setAgreedFee}
+          onBlur={() => setTouched((t) => ({ ...t, agreedFee: true }))}
+          keyboardType="decimal-pad"
+          error={agreedFeeErr ?? undefined}
+        />
         <SelectField<CasePriority>
           label="Priority"
           icon="flag-outline"
@@ -342,7 +381,7 @@ function CaseEditForm({ caseDetail, onCancel, onSaved }: { caseDetail: CaseDetai
           allowCustom
           placeholder="Select court"
         />
-        <TextField label="Bench" value={bench} onChangeText={setBench} />
+        <TextField label="Bench" placeholder="e.g. Division Bench II" value={bench} onChangeText={setBench} />
         <DateField label="Filing date" value={filingDate} onChange={setFilingDate} maximumDate={new Date()} placeholder="Not set" optional />
         <DateField
           label="Registration date"
@@ -357,8 +396,14 @@ function CaseEditForm({ caseDetail, onCancel, onSaved }: { caseDetail: CaseDetai
 
       <View style={card}>
         <SectionTitle icon="reader-outline" title="Summary & Notes" />
-        <TextField label="Summary" value={description} onChangeText={setDescription} multiline />
-        <TextField label="Internal notes (private)" value={notes} onChangeText={setNotes} multiline />
+        <TextField label="Summary" placeholder="e.g. Brief facts of the case" value={description} onChangeText={setDescription} multiline />
+        <TextField
+          label="Internal notes (private)"
+          placeholder="e.g. Client prefers WhatsApp updates"
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+        />
       </View>
 
       {error ? <Text style={[typography.body, { color: colors.danger }]}>{error}</Text> : null}

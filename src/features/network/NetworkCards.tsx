@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Dimensions, Image, Linking, Modal, Pressable, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Linking, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import {
   addComment,
   deleteComment,
@@ -9,7 +9,6 @@ import {
   FeedPost,
   getPublicAttachmentUrl,
   getPublicImageUrl,
-  incrementPostShare,
   isEdited,
   listComments,
   PostAttachment,
@@ -102,63 +101,8 @@ const REACTIONS: { kind: ReactionKind; emoji: string; label: string; icon: keyof
   { kind: "pray", emoji: "\u{1F64F}", label: "Thanks", icon: "hand-right-outline" },
 ];
 
-/** Reaction summary + picker, chat-thread style: pills only ever appear once
- * someone has actually reacted (never a placeholder/empty emoji) — tapping
- * a pill removes your own reaction from it. A single "React" control adds
- * the first one: tap for a quick endorse, long-press to choose which. */
-const SCREEN_WIDTH = Dimensions.get("window").width;
-const EMOJI_POPUP_WIDTH = 236;
-
-/** A WhatsApp-style floating emoji tray: long-press a post or comment and
- * this pops up right above your finger, instead of a button that would sit
- * there unreacted the rest of the time. */
-function EmojiReactionPopup({
-  visible,
-  anchor,
-  onSelect,
-  onClose,
-}: {
-  visible: boolean;
-  anchor: { x: number; y: number } | null;
-  onSelect: (kind: ReactionKind) => void;
-  onClose: () => void;
-}) {
-  const { colors, radius } = useTheme();
-  if (!anchor) return null;
-  const left = Math.min(Math.max(anchor.x - EMOJI_POPUP_WIDTH / 2, 12), SCREEN_WIDTH - EMOJI_POPUP_WIDTH - 12);
-  const top = Math.max(anchor.y - 72, 12);
-
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close reactions">
-        <View
-          style={[
-            styles.emojiPopup,
-            { left, top, width: EMOJI_POPUP_WIDTH, backgroundColor: colors.surface, borderRadius: radius.pill, shadowColor: "#0F172A" },
-          ]}
-        >
-          {REACTIONS.map(({ kind, emoji }) => (
-            <Pressable
-              key={kind}
-              onPress={() => {
-                onSelect(kind);
-                onClose();
-              }}
-              hitSlop={6}
-              style={({ pressed }) => [styles.emojiPopupItem, { transform: [{ scale: pressed ? 1.3 : 1 }] }]}
-            >
-              <Text style={{ fontSize: 26 }}>{emoji}</Text>
-            </Pressable>
-          ))}
-        </View>
-      </Pressable>
-    </Modal>
-  );
-}
-
 /** Reaction pill row: only ever shows emojis someone has actually used —
- * tapping one removes your own reaction from it. To add the first reaction,
- * long-press the post/comment itself to bring up the emoji tray. */
+ * tapping one removes your own reaction from it. */
 function ReactionsRow({
   counts,
   mine,
@@ -208,33 +152,26 @@ function formatCount(n: number): string {
   return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
 }
 
-/** Flat like/comment/share stat row under a post — a plain icon + count per
- * stat, no pill backgrounds. Tapping the like stat quick-reacts (endorse);
+/** Flat like/comment stat row under a post — a plain icon + count per stat,
+ * no pill backgrounds. Tapping the like stat quick-reacts (endorse);
  * long-pressing it opens the full emoji tray. */
 function PostStatsRow({
   reactionsTotal,
   myReactionActive,
   commentsCount,
-  shareCount,
   onLikePress,
-  onLikeLongPress,
   onCommentPress,
-  onSharePress,
 }: {
   reactionsTotal: number;
   myReactionActive: boolean;
   commentsCount: number;
-  shareCount: number;
   onLikePress: () => void;
-  onLikeLongPress: (e: { nativeEvent: { pageX: number; pageY: number } }) => void;
   onCommentPress: () => void;
-  onSharePress: () => void;
 }) {
   const { colors, typography } = useTheme();
-  const stats: { key: string; icon: keyof typeof Ionicons.glyphMap; count: number; active?: boolean; onPress: () => void; onLongPress?: (e: { nativeEvent: { pageX: number; pageY: number } }) => void; a11y: string }[] = [
-    { key: "like", icon: myReactionActive ? "thumbs-up" : "thumbs-up-outline", count: reactionsTotal, active: myReactionActive, onPress: onLikePress, onLongPress: onLikeLongPress, a11y: "React" },
+  const stats: { key: string; icon: keyof typeof Ionicons.glyphMap; count: number; active?: boolean; onPress: () => void; a11y: string }[] = [
+    { key: "like", icon: myReactionActive ? "thumbs-up" : "thumbs-up-outline", count: reactionsTotal, active: myReactionActive, onPress: onLikePress, a11y: "React" },
     { key: "comment", icon: "chatbubble-outline", count: commentsCount, onPress: onCommentPress, a11y: "Comments" },
-    { key: "share", icon: "arrow-redo-outline", count: shareCount, onPress: onSharePress, a11y: "Share" },
   ];
   return (
     <View style={styles.statsRow}>
@@ -242,7 +179,6 @@ function PostStatsRow({
         <Pressable
           key={s.key}
           onPress={s.onPress}
-          onLongPress={s.onLongPress}
           hitSlop={6}
           accessibilityLabel={s.a11y}
           style={({ pressed }) => [styles.statItem, { opacity: pressed ? 0.6 : 1 }]}
@@ -323,7 +259,6 @@ export function PostCard({
   onTogglePray,
   onCommentAdded,
   onCommentRemoved,
-  onShared,
   onEdited,
   onDeleted,
 }: {
@@ -336,7 +271,6 @@ export function PostCard({
   onTogglePray: () => void;
   onCommentAdded: () => void;
   onCommentRemoved: () => void;
-  onShared: () => void;
   onEdited: (update: { content: string; updated_at: string }) => void;
   onDeleted: () => void;
 }) {
@@ -345,22 +279,9 @@ export function PostCard({
   const name = author?.full_name ?? "Advocate";
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [popupAnchor, setPopupAnchor] = useState<{ x: number; y: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const reactWith = (kind: ReactionKind) =>
     kind === "endorse" ? onToggleEndorse() : kind === "heart" ? onToggleHeart() : kind === "eyes" ? onToggleEyes() : onTogglePray();
-
-  const handleShare = async () => {
-    try {
-      const result = await Share.share({ message: `${withAdvPrefix(name)} on LexConnect:\n\n${post.content}` });
-      if (result.action === Share.sharedAction) {
-        onShared();
-        incrementPostShare(post.id).catch(() => {});
-      }
-    } catch {
-      // User cancelled or the share sheet failed to open — nothing to do.
-    }
-  };
 
   const [draft, setDraft] = useState(post.content);
   const [isSaving, setIsSaving] = useState(false);
@@ -478,11 +399,9 @@ export function PostCard({
           </View>
         </View>
       ) : (
-        <Pressable onLongPress={(e) => setPopupAnchor({ x: e.nativeEvent.pageX, y: e.nativeEvent.pageY })} delayLongPress={1000}>
-          <Text style={[typography.body, { color: colors.textPrimary, marginTop: spacing.sm, lineHeight: 22 }]}>
-            {renderWithMentions(post.content, colors.brand)}
-          </Text>
-        </Pressable>
+        <Text style={[typography.body, { color: colors.textPrimary, marginTop: spacing.sm, lineHeight: 22 }]}>
+          {renderWithMentions(post.content, colors.brand)}
+        </Text>
       )}
       {!isEditing && isEdited(post) ? (
         <View style={[styles.editedTag, { marginTop: 4 }]}>
@@ -510,18 +429,14 @@ export function PostCard({
           reactionsTotal={post.likes_count + post.hearts_count + post.eyes_count + post.pray_count}
           myReactionActive={post.liked_by_me || post.hearted_by_me || post.eyed_by_me || post.prayed_by_me}
           commentsCount={post.comments_count}
-          shareCount={post.share_count}
           onLikePress={() => reactWith("endorse")}
-          onLikeLongPress={(e) => setPopupAnchor({ x: e.nativeEvent.pageX, y: e.nativeEvent.pageY })}
           onCommentPress={() => setCommentsOpen((open) => !open)}
-          onSharePress={handleShare}
         />
       </View>
 
       {commentsOpen ? <InlineComments postId={post.id} onAdded={onCommentAdded} onRemoved={onCommentRemoved} /> : null}
 
       <ActionSheet visible={menuOpen} title={isOwn ? "Your post" : name} actions={menuActions} onClose={() => setMenuOpen(false)} />
-      <EmojiReactionPopup visible={!!popupAnchor} anchor={popupAnchor} onSelect={reactWith} onClose={() => setPopupAnchor(null)} />
     </View>
   );
 }
@@ -717,7 +632,6 @@ function CommentRow({
   const { colors, spacing, radius, typography } = useTheme();
   const commenter = comment.author?.full_name ?? "Advocate";
   const [menuOpen, setMenuOpen] = useState(false);
-  const [popupAnchor, setPopupAnchor] = useState<{ x: number; y: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(comment.content);
   const [isSaving, setIsSaving] = useState(false);
@@ -809,12 +723,7 @@ function CommentRow({
               </View>
             </View>
           ) : (
-            <Pressable
-              onLongPress={(e) => setPopupAnchor({ x: e.nativeEvent.pageX, y: e.nativeEvent.pageY })}
-              delayLongPress={1000}
-            >
-              <Text style={[typography.body, { color: colors.textPrimary, marginTop: 2 }]}>{renderWithMentions(comment.content, colors.brand)}</Text>
-            </Pressable>
+            <Text style={[typography.body, { color: colors.textPrimary, marginTop: 2 }]}>{renderWithMentions(comment.content, colors.brand)}</Text>
           )}
         </View>
         <View style={[styles.commentFooterRow, { marginTop: 2 }]}>
@@ -822,6 +731,13 @@ function CommentRow({
             {timeAgo(comment.created_at)}
             {isEdited(comment) ? " · Edited" : ""}
           </Text>
+          {!isEditing ? (
+            <Pressable onPress={() => onReaction("endorse")} hitSlop={6}>
+              <Text style={[typography.label, { color: mine.endorse ? colors.brand : colors.textSecondary, fontWeight: mine.endorse ? "700" : "600" }]}>
+                Like
+              </Text>
+            </Pressable>
+          ) : null}
           {!isEditing ? (
             <ReactionsRow
               counts={{ endorse: comment.likes_count, heart: comment.hearts_count, eyes: comment.eyes_count, pray: comment.pray_count }}
@@ -833,7 +749,6 @@ function CommentRow({
         </View>
       </View>
       <ActionSheet visible={menuOpen} title={isOwn ? "Your comment" : commenter} actions={menuActions} onClose={() => setMenuOpen(false)} />
-      <EmojiReactionPopup visible={!!popupAnchor} anchor={popupAnchor} onSelect={onReaction} onClose={() => setPopupAnchor(null)} />
     </View>
   );
 }
@@ -1051,19 +966,6 @@ const styles = StyleSheet.create({
   actionButton: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 10 },
   reactionsRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
   reactionPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 9, paddingVertical: 5 },
-  emojiPopup: {
-    position: "absolute",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-  emojiPopupItem: { paddingHorizontal: 6, paddingVertical: 4 },
   reactionPillCompact: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 6, paddingVertical: 3 },
   statsRow: { flexDirection: "row", gap: 22 },
   statItem: { flexDirection: "row", alignItems: "center", gap: 6 },

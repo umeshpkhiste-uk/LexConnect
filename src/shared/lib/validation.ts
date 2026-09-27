@@ -40,3 +40,54 @@ export function enrolmentError(input: string, now: Date = new Date()): string | 
   if (!input.trim()) return null;
   return normalizeEnrolment(input, now) ? null : "Use the format STATE/NUMBER/YEAR, e.g. MAH/1234/2015";
 }
+
+/**
+ * Indian court filings are numbered NUMBER/YEAR (e.g. 482/2024, CC/123/2024
+ * with an optional short case-type prefix) — never a free-form string of
+ * digits and letters. Returns the tidied form (upper-case, "/" separators)
+ * or null if it doesn't fit.
+ */
+export function normalizeCaseNumber(input: string, now: Date = new Date()): string | null {
+  const cleaned = input.trim().toUpperCase().replace(/\s*[/\-\\ ]\s*/g, "/");
+  const match = /^(?:([A-Z]{1,6})\/?)?(\d{1,6})\/((?:19|20)\d{2})$/.exec(cleaned);
+  if (!match) return null;
+  const year = Number(match[3]);
+  if (year < 1950 || year > now.getFullYear() + 1) return null;
+  return [match[1], match[2], match[3]].filter(Boolean).join("/");
+}
+
+export function caseNumberError(input: string, now: Date = new Date()): string | null {
+  if (!input.trim()) return null;
+  return normalizeCaseNumber(input, now) ? null : "Use the format NUMBER/YEAR, e.g. 482/2024";
+}
+
+/**
+ * A GSTIN is 15 characters: 2-digit state code, 10-character PAN, a 1-digit
+ * entity number, the literal "Z", and a checksum character. This checks the
+ * structure (not the checksum digit itself) and returns the upper-cased
+ * form, or null if it doesn't fit.
+ */
+export function normalizeGstin(input: string): string | null {
+  const cleaned = input.trim().toUpperCase().replace(/\s+/g, "");
+  return /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(cleaned) ? cleaned : null;
+}
+
+export function gstinError(input: string): string | null {
+  if (!input.trim()) return null;
+  return normalizeGstin(input) ? null : "Enter a valid 15-character GSTIN, e.g. 27AAAAA0000A1Z5";
+}
+
+/**
+ * A PAN (Permanent Account Number) is 10 characters: 5 letters, 4 digits,
+ * 1 letter, e.g. ABCDE1234F. Returns the upper-cased form, or null if it
+ * doesn't fit.
+ */
+export function normalizePan(input: string): string | null {
+  const cleaned = input.trim().toUpperCase().replace(/\s+/g, "");
+  return /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(cleaned) ? cleaned : null;
+}
+
+export function panError(input: string): string | null {
+  if (!input.trim()) return null;
+  return normalizePan(input) ? null : "Enter a valid 10-character PAN, e.g. ABCDE1234F";
+}

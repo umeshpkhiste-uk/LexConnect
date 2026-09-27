@@ -18,8 +18,12 @@ export default function NewReportScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [reasonTouched, setReasonTouched] = useState(false);
+
+  const reasonError = reasonTouched && !reason.trim() ? "Tell us what's wrong" : null;
 
   const handleSubmit = async () => {
+    setReasonTouched(true);
     if (!reason.trim()) {
       setError("Tell us what's wrong");
       return;
@@ -60,13 +64,15 @@ export default function NewReportScreen() {
       </Text>
 
       <TextField
-        label="Reason"
-        placeholder="Describe the issue"
+        label="Reason *"
+        placeholder="e.g. This post contains misleading legal advice"
         value={reason}
         onChangeText={setReason}
+        onBlur={() => setReasonTouched(true)}
         multiline
         numberOfLines={4}
         style={{ height: 100, paddingTop: spacing.sm, textAlignVertical: "top" }}
+        error={reasonError ?? undefined}
       />
 
       {error ? <Text style={{ color: colors.danger, marginBottom: spacing.md }}>{error}</Text> : null}

@@ -108,11 +108,32 @@ export default function NewMeetingScreen() {
         </View>
       </ScrollView>
       <DateField label="Date & time" value={meetingAt} onChange={setMeetingAt} mode="datetime" />
-      <TextField label="Location" value={location} onChangeText={setLocation} />
-      <TextField label="Participants" value={participants} onChangeText={setParticipants} />
-      <TextField label="Discussion notes" value={discussionNotes} onChangeText={setDiscussionNotes} multiline numberOfLines={3} />
-      <TextField label="Decisions" value={decisions} onChangeText={setDecisions} multiline numberOfLines={2} />
-      <TextField label="Follow-up actions" value={followUpActions} onChangeText={setFollowUpActions} multiline numberOfLines={2} />
+      <TextField label="Location" placeholder="e.g. Chamber No. 12, District Court Complex" value={location} onChangeText={setLocation} />
+      <TextField label="Participants" placeholder="e.g. Client, opposing counsel Mr. Verma" value={participants} onChangeText={setParticipants} />
+      <TextField
+        label="Discussion notes"
+        placeholder="e.g. Discussed settlement terms proposed by the other side"
+        value={discussionNotes}
+        onChangeText={setDiscussionNotes}
+        multiline
+        numberOfLines={3}
+      />
+      <TextField
+        label="Decisions"
+        placeholder="e.g. Client agreed to counter-offer of ₹5,00,000"
+        value={decisions}
+        onChangeText={setDecisions}
+        multiline
+        numberOfLines={2}
+      />
+      <TextField
+        label="Follow-up actions"
+        placeholder="e.g. Draft settlement agreement by Friday"
+        value={followUpActions}
+        onChangeText={setFollowUpActions}
+        multiline
+        numberOfLines={2}
+      />
 
       {error ? <Text style={{ color: colors.danger, marginBottom: spacing.md }}>{error}</Text> : null}
 

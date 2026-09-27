@@ -18,11 +18,21 @@ export type Client = {
   created_at: string;
   /** Private storage path of the client's photo, if one was added. */
   photo_path: string | null;
+  /** Organization clients only. */
+  contact_person_name: string | null;
+  contact_person_designation: string | null;
+  gstin: string | null;
+  registration_number: string | null;
+  /** Individual clients only. */
+  occupation: string | null;
+  pan_number: string | null;
+  date_of_birth: string | null;
 };
 
-const CLIENT_COLUMNS = "id, full_name, client_type, phone, email, address, notes, is_archived, created_at, photo_path";
+const CLIENT_COLUMNS =
+  "id, full_name, client_type, phone, email, address, notes, is_archived, created_at, photo_path, contact_person_name, contact_person_designation, gstin, registration_number, occupation, pan_number, date_of_birth";
 
-export type ClientCaseBrief = { id: string; title: string; status: string; created_at: string; is_archived: boolean };
+export type ClientCaseBrief = { id: string; title: string; court: string | null; created_at: string; is_archived: boolean };
 export type ClientListItem = Client & { cases: ClientCaseBrief[] };
 
 export async function listClients(
@@ -30,7 +40,7 @@ export async function listClients(
 ): Promise<ClientListItem[]> {
   let query = supabase
     .from("clients")
-    .select(`${CLIENT_COLUMNS}, cases(id, title, status, created_at, is_archived)`)
+    .select(`${CLIENT_COLUMNS}, cases(id, title, court, created_at, is_archived)`)
     .order("full_name", { ascending: true })
     .limit(params.limit ?? 200);
 
@@ -55,9 +65,18 @@ export async function createClientRecord(input: {
   email?: string;
   address?: string;
   notes?: string;
+  contactPersonName?: string;
+  contactPersonDesignation?: string;
+  gstin?: string;
+  registrationNumber?: string;
+  occupation?: string;
+  panNumber?: string;
+  /** Date-only, YYYY-MM-DD. */
+  dateOfBirth?: string | null;
 }): Promise<Client> {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) throw new Error(userError?.message ?? "Not signed in");
+  const isOrg = input.clientType === "organization";
 
   const { data, error } = await supabase
     .from("clients")
@@ -69,6 +88,13 @@ export async function createClientRecord(input: {
       email: input.email?.trim() || null,
       address: input.address?.trim() || null,
       notes: input.notes?.trim() || null,
+      contact_person_name: isOrg ? input.contactPersonName?.trim() || null : null,
+      contact_person_designation: isOrg ? input.contactPersonDesignation?.trim() || null : null,
+      gstin: isOrg ? input.gstin?.trim() || null : null,
+      registration_number: isOrg ? input.registrationNumber?.trim() || null : null,
+      occupation: !isOrg ? input.occupation?.trim() || null : null,
+      pan_number: !isOrg ? input.panNumber?.trim() || null : null,
+      date_of_birth: !isOrg ? input.dateOfBirth ?? null : null,
     })
     .select(CLIENT_COLUMNS)
     .single();
@@ -93,6 +119,14 @@ export async function updateClient(
     email: string | null;
     address: string | null;
     notes: string | null;
+    contactPersonName: string | null;
+    contactPersonDesignation: string | null;
+    gstin: string | null;
+    registrationNumber: string | null;
+    occupation: string | null;
+    panNumber: string | null;
+    /** Date-only, YYYY-MM-DD. */
+    dateOfBirth: string | null;
   }>
 ): Promise<void> {
   const { error } = await supabase
@@ -104,6 +138,13 @@ export async function updateClient(
       ...(patch.email !== undefined ? { email: patch.email } : {}),
       ...(patch.address !== undefined ? { address: patch.address } : {}),
       ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
+      ...(patch.contactPersonName !== undefined ? { contact_person_name: patch.contactPersonName } : {}),
+      ...(patch.contactPersonDesignation !== undefined ? { contact_person_designation: patch.contactPersonDesignation } : {}),
+      ...(patch.gstin !== undefined ? { gstin: patch.gstin } : {}),
+      ...(patch.registrationNumber !== undefined ? { registration_number: patch.registrationNumber } : {}),
+      ...(patch.occupation !== undefined ? { occupation: patch.occupation } : {}),
+      ...(patch.panNumber !== undefined ? { pan_number: patch.panNumber } : {}),
+      ...(patch.dateOfBirth !== undefined ? { date_of_birth: patch.dateOfBirth } : {}),
     })
     .eq("id", id);
 

@@ -78,10 +78,12 @@ export function ProfileEditForm({ profile, email, submitLabel, secondaryLabel, o
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   // Field-level errors show once a field has been left (or on save).
-  const [touched, setTouched] = useState<{ phone?: boolean; enrolment?: boolean }>({});
+  const [touched, setTouched] = useState<{ fullName?: boolean; years?: boolean; phone?: boolean; enrolment?: boolean }>({});
   const [pinResult, setPinResult] = useState<{ key: string; options: PincodeOption[] } | null>(null);
   const [pinWarning, setPinWarning] = useState<string | null>(null);
 
+  const fullNameError = touched.fullName && !fullName.trim() ? "Full name is required" : null;
+  const yearsError = touched.years && years.trim() && !/^\d{1,2}$/.test(years.trim()) ? "Enter a number between 0 and 99" : null;
   const phoneError = touched.phone ? mobileError(phone) : null;
   const enrolError = touched.enrolment ? enrolmentError(enrolment) : null;
   const cityOptions = (INDIA_STATES[state] ?? []).map((c) => ({ value: c, label: c }));
@@ -152,12 +154,12 @@ export function ProfileEditForm({ profile, email, submitLabel, secondaryLabel, o
   const handleSave = async () => {
     const dobValue = toDateOnly(dob);
     const pin = pincode.trim();
-    setTouched({ phone: true, enrolment: true });
+    setTouched({ fullName: true, years: true, phone: true, enrolment: true });
     if (!fullName.trim()) return setError("Full name is required");
-    if (years && !/^\d{1,2}$/.test(years.trim())) return setError("Years of experience must be a number");
-    if (mobileError(phone)) return setError("Please fix the mobile number");
-    if (enrolmentError(enrolment)) return setError("Please fix the enrolment number");
-    if (pincodeError(pin)) return setError(pincodeError(pin));
+    if (years.trim() && !/^\d{1,2}$/.test(years.trim())) return setError("Years of practice: enter a number between 0 and 99");
+    if (mobileError(phone)) return setError(`Mobile number: ${mobileError(phone)}`);
+    if (enrolmentError(enrolment)) return setError(`Enrolment no.: ${enrolmentError(enrolment)}`);
+    if (pincodeError(pin)) return setError(`PIN code: ${pincodeError(pin)}`);
     const phoneValue = phone.trim() ? normalizeIndianMobile(phone) : null;
     const enrolmentValue = enrolment.trim() ? normalizeEnrolment(enrolment) : null;
 
@@ -239,7 +241,15 @@ export function ProfileEditForm({ profile, email, submitLabel, secondaryLabel, o
             <Text style={[typography.caption, { color: colors.textSecondary }]}>A clear, professional headshot works best.</Text>
           </View>
         </Pressable>
-        <TextField label="Full name *" value={fullName} onChangeText={setFullName} autoCapitalize="words" />
+        <TextField
+          label="Full name *"
+          placeholder="e.g. Ramesh Kumar"
+          value={fullName}
+          onChangeText={setFullName}
+          onBlur={() => setTouched((t) => ({ ...t, fullName: true }))}
+          autoCapitalize="words"
+          error={fullNameError ?? undefined}
+        />
         <TextField
           label="Professional headline"
           placeholder="e.g. Advocate-on-Record | Commercial Disputes & Arbitration"
@@ -248,7 +258,7 @@ export function ProfileEditForm({ profile, email, submitLabel, secondaryLabel, o
         />
         <TextField
           label="About"
-          placeholder="A short professional biography"
+          placeholder="e.g. 10+ years practicing civil and property law before the Bombay High Court"
           value={about}
           onChangeText={setAbout}
           multiline
@@ -280,7 +290,16 @@ export function ProfileEditForm({ profile, email, submitLabel, secondaryLabel, o
           disabled={!state}
           hint={state ? "Not listed? Search and pick “Use …” to add your town." : undefined}
         />
-        <TextField label="Years of practice" value={years} onChangeText={setYears} keyboardType="number-pad" maxLength={2} />
+        <TextField
+          label="Years of practice"
+          placeholder="e.g. 12"
+          value={years}
+          onChangeText={setYears}
+          onBlur={() => setTouched((t) => ({ ...t, years: true }))}
+          keyboardType="number-pad"
+          maxLength={2}
+          error={yearsError ?? undefined}
+        />
         <TagInput
           label="Practice areas"
           values={practiceAreas}
@@ -315,7 +334,7 @@ export function ProfileEditForm({ profile, email, submitLabel, secondaryLabel, o
           <View style={{ flex: 1 }}>
             <TextField
               label="Enrolment no."
-              placeholder="MAH/1234/2015"
+              placeholder="e.g. MAH/1234/2015"
               value={enrolment}
               onChangeText={setEnrolment}
               onBlur={() => {
@@ -356,7 +375,7 @@ export function ProfileEditForm({ profile, email, submitLabel, secondaryLabel, o
             <TextInput
               value={entry.institution ?? ""}
               onChangeText={(v) => updateEducation(i, { institution: v })}
-              placeholder="Institution"
+              placeholder="e.g. Government Law College, Mumbai"
               placeholderTextColor={colors.textSecondary}
               style={[typography.body, { color: colors.textPrimary, paddingVertical: 6 }]}
             />
@@ -364,7 +383,7 @@ export function ProfileEditForm({ profile, email, submitLabel, secondaryLabel, o
               <TextInput
                 value={entry.year ?? ""}
                 onChangeText={(v) => updateEducation(i, { year: v })}
-                placeholder="Year"
+                placeholder="e.g. 2015"
                 keyboardType="number-pad"
                 maxLength={4}
                 placeholderTextColor={colors.textSecondary}
@@ -401,6 +420,7 @@ export function ProfileEditForm({ profile, email, submitLabel, secondaryLabel, o
         {title("home-outline", "Chambers & Contact", "Private — only you can see these.")}
         <TextField
           label="Court chambers / office address"
+          placeholder="e.g. Chamber No. 12, District Court Complex, Pune"
           value={chamber}
           onChangeText={setChamber}
           multiline
@@ -408,7 +428,7 @@ export function ProfileEditForm({ profile, email, submitLabel, secondaryLabel, o
         />
         <TextField
           label="Mobile number"
-          placeholder="98765 43210"
+          placeholder="e.g. 98765 43210"
           value={phone}
           onChangeText={setPhone}
           onBlur={() => {
@@ -438,7 +458,7 @@ export function ProfileEditForm({ profile, email, submitLabel, secondaryLabel, o
         />
         <TextField
           label="Home address"
-          placeholder="House / flat no., street, area"
+          placeholder="e.g. 12, MG Road, Pune, Maharashtra"
           value={addressLine}
           onChangeText={setAddressLine}
           multiline

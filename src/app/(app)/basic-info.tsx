@@ -7,7 +7,6 @@ import { getNetworkStats } from "@/features/network/api";
 import { AdvocateProfile, completeOnboarding, countMyCases, getMyProfile } from "@/features/profile/api";
 import { ProfileDocket } from "@/features/profile/ProfileDocket";
 import { ProfileEditForm } from "@/features/profile/ProfileEditForm";
-import { Button } from "@/shared/ui/Button";
 import { useTheme } from "@/shared/ui/theme";
 
 /**
@@ -100,17 +99,14 @@ export default function BasicInfoScreen() {
           onSecondary={isOnboarding ? skipOnboarding : () => setIsEditing(false)}
         />
       ) : (
-        <>
-          <ProfileDocket
-            profile={profile}
-            email={email}
-            audience="private"
-            caseCount={caseCount}
-            connectionsCount={connectionsCount}
-          />
-
-          <Button label="Edit profile details" onPress={() => setIsEditing(true)} pill />
-        </>
+        <ProfileDocket
+          profile={profile}
+          email={email}
+          audience="private"
+          caseCount={caseCount}
+          connectionsCount={connectionsCount}
+          onEdit={() => setIsEditing(true)}
+        />
       )}
     </ScrollView>
   );

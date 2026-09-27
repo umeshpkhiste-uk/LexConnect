@@ -256,9 +256,6 @@ export default function NetworkScreen() {
   const dropComments = (postId: string) =>
     setFeed((prev) => prev.map((p) => (p.id === postId ? { ...p, comments_count: Math.max(0, p.comments_count - 1) } : p)));
 
-  const bumpShares = (postId: string) =>
-    setFeed((prev) => prev.map((p) => (p.id === postId ? { ...p, share_count: p.share_count + 1 } : p)));
-
   const handleConnect = async (profile: PublicProfile) => {
     setConnections((prev) => [
       { id: `optimistic-${profile.id}`, status: "pending", isIncoming: false, otherParty: { ...profile, phone: null } },
@@ -394,7 +391,6 @@ export default function NetworkScreen() {
                   onTogglePray={() => handlePray(post)}
                   onCommentAdded={() => bumpComments(post.id)}
                   onCommentRemoved={() => dropComments(post.id)}
-                  onShared={() => bumpShares(post.id)}
                   isOwn={post.author_id === me?.id}
                   onEdited={(update) => setFeed((prev) => prev.map((p) => (p.id === post.id ? { ...p, ...update } : p)))}
                   onDeleted={() => setFeed((prev) => prev.filter((p) => p.id !== post.id))}

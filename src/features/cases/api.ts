@@ -1,6 +1,5 @@
 import { supabase } from "@/shared/lib/supabase";
 
-export type CaseStatus = "draft" | "active" | "pending" | "adjourned" | "disposed" | "closed" | "archived";
 export type CasePriority = "low" | "medium" | "high";
 
 export type CaseSummary = {
@@ -8,10 +7,10 @@ export type CaseSummary = {
   title: string;
   case_number: string | null;
   case_type: string | null;
+  court: string | null;
   opposite_party: string | null;
   /** Total fees agreed with the client for this case (₹), if set. */
   agreed_fee: number | null;
-  status: CaseStatus;
   priority: CasePriority;
   next_hearing_at: string | null;
   client_id: string;
@@ -20,7 +19,6 @@ export type CaseSummary = {
 };
 
 export type CaseDetail = CaseSummary & {
-  court: string | null;
   bench: string | null;
   filing_date: string | null;
   registration_date: string | null;
@@ -31,18 +29,17 @@ export type CaseDetail = CaseSummary & {
 };
 
 const CASE_SUMMARY_COLUMNS =
-  "id, title, case_number, case_type, opposite_party, agreed_fee, status, priority, next_hearing_at, client_id, created_at, clients(full_name)";
+  "id, title, case_number, case_type, court, opposite_party, agreed_fee, priority, next_hearing_at, client_id, created_at, clients(full_name)";
 
 const CASE_DETAIL_COLUMNS = `
   id, title, case_number, case_type, court, bench, filing_date, registration_date,
-  status, priority, opposite_party, agreed_fee, description, internal_notes, tags,
+  priority, opposite_party, agreed_fee, description, internal_notes, tags,
   next_hearing_at, is_archived, client_id, created_at, clients(full_name)
 `;
 
 export async function listCases(
   params: {
     search?: string;
-    status?: CaseStatus;
     clientId?: string;
     includeArchived?: boolean;
     limit?: number;
@@ -59,7 +56,6 @@ export async function listCases(
     .limit(params.limit ?? 100);
 
   if (!params.includeArchived) query = query.eq("is_archived", false);
-  if (params.status) query = query.eq("status", params.status);
   if (params.clientId) query = query.eq("client_id", params.clientId);
   if (params.search?.trim()) query = query.ilike("title", `%${params.search.trim()}%`);
 
@@ -80,10 +76,14 @@ export async function createCase(input: {
   caseNumber?: string;
   caseType?: string;
   court?: string;
-  status?: CaseStatus;
+  bench?: string;
   priority?: CasePriority;
   oppositeParty?: string;
+  /** Date-only, YYYY-MM-DD. */
+  filingDate?: string | null;
+  registrationDate?: string | null;
   description?: string;
+  internalNotes?: string;
   agreedFee?: number | null;
 }): Promise<CaseDetail> {
   const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -98,10 +98,13 @@ export async function createCase(input: {
       case_number: input.caseNumber?.trim() || null,
       case_type: input.caseType?.trim() || null,
       court: input.court?.trim() || null,
-      status: input.status ?? "draft",
+      bench: input.bench?.trim() || null,
       priority: input.priority ?? "medium",
       opposite_party: input.oppositeParty?.trim() || null,
+      filing_date: input.filingDate ?? null,
+      registration_date: input.registrationDate ?? null,
       description: input.description?.trim() || null,
+      internal_notes: input.internalNotes?.trim() || null,
       agreed_fee: input.agreedFee ?? null,
     })
     .select(CASE_DETAIL_COLUMNS)
@@ -116,18 +119,6 @@ export async function createCase(input: {
   });
 
   return data as unknown as CaseDetail;
-}
-
-export async function updateCaseStatus(id: string, status: CaseStatus): Promise<void> {
-  const { error } = await supabase.from("cases").update({ status }).eq("id", id);
-  if (error) throw new Error(error.message);
-
-  await supabase.rpc("log_audit_event", {
-    p_action: "case_status_changed",
-    p_resource_type: "case",
-    p_resource_id: id,
-    p_metadata: { status },
-  });
 }
 
 export async function updateCase(

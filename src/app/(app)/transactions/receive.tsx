@@ -36,6 +36,7 @@ export default function EditPendingPaymentScreen() {
   const [receipt, setReceipt] = useState<PickedReceipt | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [amountTouched, setAmountTouched] = useState(false);
 
   useEffect(() => {
     getTransaction(id)
@@ -65,8 +66,17 @@ export default function EditPendingPaymentScreen() {
   const received = Number(amountReceived) || 0;
   const remaining = Math.max(pendingAmount - received, 0);
   const categories = INCOME_CATEGORIES.includes(tx.category) ? INCOME_CATEGORIES : [tx.category, ...INCOME_CATEGORIES];
+  const amountError =
+    status === "received" && amountTouched
+      ? !amountReceived.trim() || Number.isNaN(received) || received <= 0
+        ? "Enter the amount received"
+        : received > pendingAmount
+          ? `Can't be more than the pending ${formatINR(pendingAmount)}`
+          : null
+      : null;
 
   const handleSave = async () => {
+    setAmountTouched(true);
     if (status === "received") {
       if (!amountReceived.trim() || Number.isNaN(received) || received <= 0) return setError("Enter the amount received");
       if (received > pendingAmount) return setError(`Can't be more than the pending ${formatINR(pendingAmount)}`);
@@ -119,7 +129,15 @@ export default function EditPendingPaymentScreen() {
 
       {status === "received" ? (
         <>
-          <TextField label="Amount received (₹)" value={amountReceived} onChangeText={setAmountReceived} keyboardType="decimal-pad" />
+          <TextField
+            label="Amount received (₹)"
+            placeholder="e.g. 5000"
+            value={amountReceived}
+            onChangeText={setAmountReceived}
+            onBlur={() => setAmountTouched(true)}
+            keyboardType="decimal-pad"
+            error={amountError ?? undefined}
+          />
           {received > 0 && remaining > 0 ? (
             <Text style={[typography.caption, { color: colors.warning, marginTop: -spacing.sm, marginBottom: spacing.md }]}>
               {formatINR(remaining)} will stay pending

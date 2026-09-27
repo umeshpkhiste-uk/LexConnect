@@ -14,6 +14,8 @@ type Props = {
   audience: DocketAudience;
   caseCount: number | null;
   connectionsCount: number | null;
+  /** Icon-only edit entry point next to the name — owner view only. */
+  onEdit?: () => void;
 };
 
 const verificationLabel: Record<AdvocateProfile["verification_status"], string> = {
@@ -58,7 +60,7 @@ function formatDob(value: string) {
  * audience="public" it renders only what other advocates can see, so the
  * owner can preview their public bar view.
  */
-export function ProfileDocket({ profile, email, audience, caseCount, connectionsCount }: Props) {
+export function ProfileDocket({ profile, email, audience, caseCount, connectionsCount, onEdit }: Props) {
   const { colors, spacing, radius, typography } = useTheme();
   const isPrivate = audience === "private";
   const verified = profile.verification_status === "verified";
@@ -93,7 +95,16 @@ export function ProfileDocket({ profile, email, audience, caseCount, connections
             <OnlineDot userId={isPrivate ? profile.id : null} avatarSize={80} inset={4} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[typography.title, { color: colors.brand }]}>{withAdvPrefix(profile.full_name)}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+              <Text style={[typography.title, { color: colors.brand, flexShrink: 1 }]} numberOfLines={1}>
+                {withAdvPrefix(profile.full_name)}
+              </Text>
+              {onEdit ? (
+                <Pressable onPress={onEdit} hitSlop={8} accessibilityLabel="Edit profile details">
+                  <Ionicons name="create-outline" size={20} color={colors.brand} />
+                </Pressable>
+              ) : null}
+            </View>
             <View style={[styles.badges, { marginTop: 4 }]}>
               {isPrivate || verified ? (
                 <View style={[styles.badge, { backgroundColor: verified ? "#FED488" : colors.surfaceAlt }]}>

@@ -11,6 +11,9 @@ type Props = {
   /** For many tabs: segments size to their label and the bar scrolls
    * horizontally instead of squeezing every label into equal widths. */
   scrollable?: boolean;
+  /** Locks the current selection — e.g. a client's type can't change once
+   * the client (and any cases under it) already exist. */
+  disabled?: boolean;
   style?: ViewStyle;
 };
 
@@ -18,7 +21,7 @@ type Props = {
  * The app's one tab style: a recessed pill track with the active tab raised
  * as a brand-coloured pill inside it, with thin dividers between inactive ones.
  */
-export function SegmentedControl({ segments, value, onChange, scrollable = false, style }: Props) {
+export function SegmentedControl({ segments, value, onChange, scrollable = false, disabled = false, style }: Props) {
   const { colors, radius, spacing, typography } = useTheme();
   const scrollRef = useRef<ScrollView>(null);
   const offsets = useRef<Record<string, number>>({});
@@ -42,16 +45,18 @@ export function SegmentedControl({ segments, value, onChange, scrollable = false
       <Pressable
         key={segment.key}
         onPress={() => handlePress(segment.key)}
+        disabled={disabled}
         onLayout={(e) => {
           offsets.current[segment.key] = e.nativeEvent.layout.x;
         }}
         accessibilityRole="tab"
-        accessibilityState={{ selected: isActive }}
+        accessibilityState={{ selected: isActive, disabled }}
         style={[
           styles.segment,
           scrollable ? { paddingHorizontal: spacing.lg } : styles.equal,
           { borderRadius: radius.pill, backgroundColor: isActive ? colors.brand : "transparent" },
           isActive && styles.activeShadow,
+          disabled && !isActive && styles.disabledSegment,
         ]}
       >
         {showDivider ? <View style={[styles.divider, { backgroundColor: colors.border }]} /> : null}
@@ -113,6 +118,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: { paddingVertical: 4 },
   segment: { minHeight: 38, alignItems: "center", justifyContent: "center" },
+  disabledSegment: { opacity: 0.4 },
   equal: { flex: 1 },
   divider: { position: "absolute", left: 0, top: 10, bottom: 10, width: StyleSheet.hairlineWidth * 2 },
 });

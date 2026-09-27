@@ -39,10 +39,15 @@ export default function NewTransactionScreen() {
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [touched, setTouched] = useState<{ amount?: boolean; fee?: boolean }>({});
 
   const categories = type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
   const selectedCase = cases.find((c) => c.id === selectedCaseId) ?? null;
   const currentFee = selectedCase?.agreed_fee === null || selectedCase?.agreed_fee === undefined ? null : Number(selectedCase.agreed_fee);
+  const amountFormatError =
+    touched.amount && amount.trim() && (Number.isNaN(Number(amount)) || Number(amount) <= 0) ? "Enter a valid amount" : null;
+  const feeFormatError =
+    touched.fee && feeDraft.trim() && (Number.isNaN(Number(feeDraft)) || Number(feeDraft) < 0) ? "Enter a valid total fee" : null;
 
   // The client's cases: to pick which case a payment is for, and to read and
   // update that case's agreed total fees.
@@ -73,21 +78,22 @@ export default function NewTransactionScreen() {
   };
 
   const handleSave = async () => {
+    setTouched({ amount: true, fee: true });
     const feeEditing = type === "income" && !!selectedCase && (isEditingFee || currentFee === null) && feeDraft.trim() !== "";
     const feeValue = feeEditing ? Number(feeDraft) : null;
     if (feeEditing && (Number.isNaN(feeValue) || (feeValue ?? 0) < 0)) {
-      setError("Enter a valid total fee");
+      setError("Total fees agreed: enter a valid amount");
       return;
     }
     const feeChanged = feeEditing && feeValue !== currentFee;
     const amountValue = Number(amount);
     const hasAmount = amount.trim() !== "";
     if (!hasAmount && !feeChanged) {
-      setError("Enter the amount");
+      setError(type === "income" ? "Enter the amount received" : "Enter the amount");
       return;
     }
     if (hasAmount && (Number.isNaN(amountValue) || amountValue <= 0)) {
-      setError("Enter a valid amount");
+      setError("Amount: enter a valid amount");
       return;
     }
     setError(null);
@@ -161,7 +167,8 @@ export default function NewTransactionScreen() {
               <TextInput
                 value={feeDraft}
                 onChangeText={setFeeDraft}
-                placeholder={currentFee === null ? "Amount agreed with the client" : "New total fees"}
+                onBlur={() => setTouched((t) => ({ ...t, fee: true }))}
+                placeholder={currentFee === null ? "e.g. 25000" : "New total fees"}
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="decimal-pad"
                 autoFocus={isEditingFee}
@@ -173,7 +180,10 @@ export default function NewTransactionScreen() {
                 </Pressable>
               ) : null}
             </View>
-          ) : (
+          ) : null}
+          {feeFormatError ? (
+            <Text style={[typography.caption, { color: colors.danger, marginTop: spacing.xs }]}>{feeFormatError}</Text>
+          ) : !(isEditingFee || currentFee === null) ? (
             <View
               style={[
                 styles.feeRow,
@@ -188,7 +198,7 @@ export default function NewTransactionScreen() {
                 <Text style={[typography.label, { color: colors.brand }]}>Edit</Text>
               </Pressable>
             </View>
-          )}
+          ) : null}
           <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 4 }]}>
             {currentFee === null
               ? "The full fee for this case. Pending = total fees − amount received."
@@ -201,10 +211,12 @@ export default function NewTransactionScreen() {
 
       <TextField
         label={type === "income" ? "Amount received (₹)" : "Amount (₹)"}
-        placeholder="0"
+        placeholder="e.g. 5000"
         value={amount}
         onChangeText={setAmount}
+        onBlur={() => setTouched((t) => ({ ...t, amount: true }))}
         keyboardType="decimal-pad"
+        error={amountFormatError ?? undefined}
       />
 
       <SelectField
@@ -218,7 +230,7 @@ export default function NewTransactionScreen() {
 
       <ReceiptPicker value={receipt} onChange={setReceipt} />
 
-      <TextField label="Notes" placeholder="Optional" value={notes} onChangeText={setNotes} multiline />
+      <TextField label="Notes" placeholder="e.g. Paid via UPI, receipt shared on WhatsApp" value={notes} onChangeText={setNotes} multiline />
 
       {error ? <Text style={[typography.body, { color: colors.danger, marginBottom: spacing.md }]}>{error}</Text> : null}
 

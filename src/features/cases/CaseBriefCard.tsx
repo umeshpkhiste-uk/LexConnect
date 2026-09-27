@@ -14,7 +14,7 @@ type Props = {
   onHearingChanged?: () => void;
 };
 
-/** Navy "brief" card for a case: number, title, parties, status/priority/type
+/** Navy "brief" card for a case: number, title, parties, court/priority/type
  * pills, and the next hearing as a badge underneath. */
 export function CaseBriefCard({ caseItem, onPress, onEdit, onHearingChanged }: Props) {
   const { colors, spacing, radius, typography } = useTheme();
@@ -55,9 +55,12 @@ export function CaseBriefCard({ caseItem, onPress, onEdit, onHearingChanged }: P
         ) : null}
 
         <View style={[styles.rowWrap, { marginTop: spacing.md }]}>
-          <View style={[styles.pill, pillBg]}>
-            <Text style={[styles.pillText, { color: "#FFFFFF" }]}>{caseItem.status.toUpperCase()}</Text>
-          </View>
+          {caseItem.court ? (
+            <View style={[styles.pill, pillBg]}>
+              <Ionicons name="business-outline" size={12} color="#FFFFFF" />
+              <Text style={[styles.pillText, { color: "#FFFFFF" }]}>{caseItem.court.toUpperCase()}</Text>
+            </View>
+          ) : null}
           <View style={[styles.pill, pillBg]}>
             <View style={[styles.dot, { backgroundColor: priorityColor }]} />
             <Text style={[styles.pillText, { color: "#FFFFFF" }]}>{caseItem.priority.toUpperCase()} PRIORITY</Text>

@@ -12,23 +12,12 @@ import { useSwipeTabs } from "@/shared/hooks/useSwipeTabs";
 import { ActionSheet, SheetAction } from "@/shared/ui/ActionSheet";
 import { ClientAvatar } from "@/features/clients/ClientAvatar";
 import { Badge } from "@/shared/ui/Badge";
-import { Fab } from "@/shared/ui/Fab";
 import { SegmentedControl } from "@/shared/ui/SegmentedControl";
 import { TextField } from "@/shared/ui/TextField";
 import { HomeButton } from "@/shared/ui/HomeButton";
 import { useTheme } from "@/shared/ui/theme";
 
 const CASES_SEGMENTS = ["cases", "clients"] as const;
-
-const CASE_STATUS_TONE: Record<CaseSummary["status"], "neutral" | "brand" | "success" | "warning" | "danger"> = {
-  draft: "neutral",
-  active: "brand",
-  pending: "warning",
-  adjourned: "warning",
-  disposed: "success",
-  closed: "success",
-  archived: "neutral",
-};
 
 export default function CasesScreen() {
   const { colors, spacing, radius, typography } = useTheme();
@@ -91,7 +80,17 @@ export default function CasesScreen() {
       <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.md }}>
           <Text style={[typography.title, { color: colors.textPrimary }]}>Cases</Text>
-          <HomeButton />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+            <Pressable
+              onPress={() => router.push(segment === "cases" ? "/(app)/cases/new" : "/(app)/clients/new")}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={segment === "cases" ? "New case" : "New client"}
+            >
+              <Ionicons name="add-circle-outline" size={26} color={colors.textPrimary} />
+            </Pressable>
+            <HomeButton />
+          </View>
         </View>
         <SegmentedControl
           segments={[
@@ -124,7 +123,7 @@ export default function CasesScreen() {
           contentContainerStyle={{ padding: spacing.lg, paddingBottom: 96 }}
           ListEmptyComponent={
             <Text style={[typography.body, { color: colors.textSecondary, textAlign: "center", marginTop: spacing.xl }]}>
-              No cases yet. Tap + to add a client and their first case.
+              No cases yet. Tap + above to add one.
             </Text>
           }
           ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
@@ -144,7 +143,7 @@ export default function CasesScreen() {
           contentContainerStyle={{ padding: spacing.lg, paddingBottom: 96 }}
           ListEmptyComponent={
             <Text style={[typography.body, { color: colors.textSecondary, textAlign: "center", marginTop: spacing.xl }]}>
-              No clients yet. Tap + to add one.
+              No clients yet. Tap + above to add one.
             </Text>
           }
           renderItem={({ item }) => {
@@ -194,7 +193,7 @@ export default function CasesScreen() {
                         {shown.title}
                       </Text>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <Badge label={shown.status} tone={CASE_STATUS_TONE[shown.status as CaseSummary["status"]] ?? "neutral"} />
+                        {shown.court ? <Badge label={shown.court} tone="neutral" /> : null}
                         {more > 0 ? <Text style={[typography.caption, { color: colors.textSecondary }]}>+{more} more</Text> : null}
                       </View>
                     </>
@@ -230,9 +229,6 @@ export default function CasesScreen() {
         actions={clientMenu?.actions ?? []}
         onClose={() => setClientMenu(null)}
       />
-      {/* Both tabs start from a new client; saving one goes straight on to
-          creating that client's first case. */}
-      <Fab onPress={() => router.push("/(app)/clients/new")} />
     </SafeAreaView>
   );
 }
