@@ -3,8 +3,11 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { createCase } from "@/features/cases/api";
 import { Client, getClient, listClients } from "@/features/clients/api";
+import { CASE_TYPE_OPTIONS } from "@/shared/data/caseTypes";
+import { COURT_OPTIONS } from "@/shared/data/courts";
 import { Button } from "@/shared/ui/Button";
 import { ScreenContainer } from "@/shared/ui/ScreenContainer";
+import { SelectField } from "@/shared/ui/SelectField";
 import { TextField } from "@/shared/ui/TextField";
 import { useTheme } from "@/shared/ui/theme";
 
@@ -139,8 +142,25 @@ export default function NewCaseScreen() {
 
       <TextField label="Case title" placeholder="e.g. Sharma vs. Verma" value={title} onChangeText={setTitle} />
       <TextField label="Case number" value={caseNumber} onChangeText={setCaseNumber} />
-      <TextField label="Case type" placeholder="e.g. Civil, Criminal" value={caseType} onChangeText={setCaseType} />
-      <TextField label="Court" value={court} onChangeText={setCourt} />
+      <SelectField
+        label="Case type"
+        icon="folder-outline"
+        value={caseType || null}
+        options={CASE_TYPE_OPTIONS.map((c) => ({ value: c, label: c }))}
+        onChange={setCaseType}
+        allowCustom
+        searchable
+        placeholder="Select case type"
+      />
+      <SelectField
+        label="Court"
+        icon="business-outline"
+        value={court || null}
+        options={COURT_OPTIONS.map((c) => ({ value: c, label: c }))}
+        onChange={setCourt}
+        allowCustom
+        placeholder="Select court"
+      />
       <TextField label="Opposite party" value={oppositeParty} onChangeText={setOppositeParty} />
       <TextField
         label="Total fees agreed (₹)"

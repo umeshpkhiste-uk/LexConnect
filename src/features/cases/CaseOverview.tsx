@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { NextHearingSheet } from "@/features/hearings/NextHearingSheet";
 import { CaseDocument, deleteDocument, getDocumentSignedUrl, listDocumentsForCase, uploadDocument } from "@/features/documents/api";
+import { CASE_TYPE_OPTIONS } from "@/shared/data/caseTypes";
+import { COURT_OPTIONS } from "@/shared/data/courts";
 import { formatHearingDate, formatINR } from "@/shared/lib/format";
 import { Button } from "@/shared/ui/Button";
 import { SelectField } from "@/shared/ui/SelectField";
@@ -308,7 +310,16 @@ function CaseEditForm({ caseDetail, onCancel, onSaved }: { caseDetail: CaseDetai
         <SectionTitle icon="folder-open-outline" title="Case" />
         <TextField label="Case title *" value={title} onChangeText={setTitle} />
         <TextField label="Case number" value={caseNumber} onChangeText={setCaseNumber} autoCapitalize="characters" />
-        <TextField label="Case type" placeholder="e.g. Civil Suit, Bail Application" value={caseType} onChangeText={setCaseType} />
+        <SelectField
+          label="Case type"
+          icon="folder-outline"
+          value={caseType || null}
+          options={CASE_TYPE_OPTIONS.map((c) => ({ value: c, label: c }))}
+          onChange={setCaseType}
+          allowCustom
+          searchable
+          placeholder="Select case type"
+        />
         <TextField label="Opposite party" value={oppositeParty} onChangeText={setOppositeParty} />
         <TextField label="Total fees agreed (₹)" placeholder="Not set" value={agreedFee} onChangeText={setAgreedFee} keyboardType="decimal-pad" />
         <SelectField<CasePriority>
@@ -322,7 +333,15 @@ function CaseEditForm({ caseDetail, onCancel, onSaved }: { caseDetail: CaseDetai
 
       <View style={card}>
         <SectionTitle icon="business-outline" title="Court & Dates" />
-        <TextField label="Court" value={court} onChangeText={setCourt} />
+        <SelectField
+          label="Court"
+          icon="business-outline"
+          value={court || null}
+          options={COURT_OPTIONS.map((c) => ({ value: c, label: c }))}
+          onChange={setCourt}
+          allowCustom
+          placeholder="Select court"
+        />
         <TextField label="Bench" value={bench} onChangeText={setBench} />
         <DateField label="Filing date" value={filingDate} onChange={setFilingDate} maximumDate={new Date()} placeholder="Not set" optional />
         <DateField

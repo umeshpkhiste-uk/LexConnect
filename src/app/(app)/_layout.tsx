@@ -54,6 +54,7 @@ export default function AppLayout() {
         <Stack.Screen name="notifications" options={{ headerShown: true, title: "Notifications" }} />
         <Stack.Screen name="basic-info" options={{ headerShown: true, title: "Basic information" }} />
         <Stack.Screen name="settings" options={{ headerShown: true, title: "Settings" }} />
+        <Stack.Screen name="language" options={{ headerShown: true, title: "Language" }} />
         <Stack.Screen name="app-lock" options={{ headerShown: true, title: "App lock" }} />
         <Stack.Screen name="about" options={{ headerShown: true, title: "About LexConnect" }} />
         <Stack.Screen name="faq" options={{ headerShown: true, title: "FAQ" }} />

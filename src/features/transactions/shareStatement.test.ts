@@ -49,4 +49,29 @@ describe("buildStatement", () => {
     expect(text).not.toContain("Court fee");
     expect(text).toContain("No fee entries yet.");
   });
+
+  it("restricts entries to a given date range and labels the period", () => {
+    const text = buildStatement({
+      clientName: "Ravi",
+      transactions: [
+        tx({ amount: 2000, transaction_date: "2026-08-15", category: "August fee" }),
+        tx({ amount: 3000, transaction_date: "2026-09-10", category: "September fee" }),
+      ],
+      range: { from: "2026-09-01", to: "2026-09-30" },
+      periodLabel: "September 2026",
+    });
+    expect(text).toContain("Period: September 2026");
+    expect(text).toContain("September fee");
+    expect(text).not.toContain("August fee");
+    expect(text).toContain("Received in this period: ₹3,000");
+  });
+
+  it("shows a placeholder when a range has no entries", () => {
+    const text = buildStatement({
+      clientName: "Ravi",
+      transactions: [tx({ transaction_date: "2026-08-15" })],
+      range: { from: "2026-09-01", to: "2026-09-30" },
+    });
+    expect(text).toContain("No fee entries in this period.");
+  });
 });

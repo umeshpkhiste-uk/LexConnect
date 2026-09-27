@@ -1,8 +1,30 @@
 import { decode } from "base64-arraybuffer";
 import * as FileSystem from "expo-file-system/legacy";
 import { supabase } from "@/shared/lib/supabase";
+import { decryptFromParty, encryptForRecipient, getPublicKey } from "./encryption";
 
 const ATTACHMENT_BUCKET = "message-attachments";
+
+/** A message row exactly as stored: `content` is ciphertext once `nonce` is
+ * set (null `nonce` means a legacy plaintext message, sent before
+ * encryption existed). Never exposed outside this file. */
+type EncryptedMessageRow = Message & { nonce: string | null };
+
+/** Decrypts `content` for display, given the sealed text and its nonce.
+ * Encryption stays entirely internal to this module, so the rest of the
+ * app only ever sees real text. */
+async function decryptText(content: string, nonce: string | null, otherPartyPublicKey: string | null): Promise<string> {
+  if (!nonce || !content) return content;
+  if (!otherPartyPublicKey) return "🔒 Unable to decrypt — the other person hasn't enabled secure messaging yet.";
+  const plaintext = await decryptFromParty({ content, nonce }, otherPartyPublicKey);
+  return plaintext ?? "🔒 Unable to decrypt this message on this device.";
+}
+
+/** Decrypts a full message row for display. */
+async function decryptRow(row: EncryptedMessageRow, otherPartyPublicKey: string | null): Promise<Message> {
+  const { nonce, ...message } = row;
+  return { ...message, content: await decryptText(message.content, nonce, otherPartyPublicKey) };
+}
 
 async function currentUserId(): Promise<string> {
   const { data, error } = await supabase.auth.getUser();
@@ -43,7 +65,7 @@ export async function listConversations(): Promise<ConversationSummary[]> {
     supabase.from("public_advocate_profiles").select("id, full_name, profile_photo_url").in("id", otherIds),
     supabase
       .from("messages")
-      .select("conversation_id, content, is_deleted, sender_id, read_at, created_at, attachment_kind")
+      .select("conversation_id, content, nonce, is_deleted, sender_id, read_at, created_at, attachment_kind")
       .in("conversation_id", conversationIds)
       .order("created_at", { ascending: false }),
     supabase
@@ -66,9 +88,11 @@ export async function listConversations(): Promise<ConversationSummary[]> {
   for (const m of unreadResult.data) {
     unreadCountByConversation.set(m.conversation_id, (unreadCountByConversation.get(m.conversation_id) ?? 0) + 1);
   }
+  // One public-key lookup per distinct other party, reused across their previews.
+  const publicKeyByOtherId = new Map(await Promise.all(otherIds.map(async (id) => [id, await getPublicKey(id)] as const)));
 
-  return rows
-    .map((r) => {
+  return Promise.all(
+    rows.map(async (r) => {
       const otherId = r.participant_one_id === me ? r.participant_two_id : r.participant_one_id;
       const otherParty = profileById.get(otherId);
       if (!otherParty) return null;
@@ -79,7 +103,7 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         otherParty,
         lastMessage: lastMessage
           ? {
-              content: lastMessage.content,
+              content: await decryptText(lastMessage.content, lastMessage.nonce, publicKeyByOtherId.get(otherId) ?? null),
               is_deleted: lastMessage.is_deleted,
               sender_id: lastMessage.sender_id,
               read_at: lastMessage.read_at,
@@ -90,7 +114,7 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         unreadCount: unreadCountByConversation.get(r.id) ?? 0,
       };
     })
-    .filter((c): c is ConversationSummary => c !== null);
+  ).then((list) => list.filter((c): c is ConversationSummary => c !== null));
 }
 
 /** Finds or creates the 1-to-1 conversation with a connected advocate. */
@@ -147,7 +171,7 @@ export type Message = {
 };
 
 const MESSAGE_COLUMNS =
-  "id, conversation_id, sender_id, content, is_deleted, read_at, created_at, edited_at, reply_to_id, attachment_path, attachment_kind, attachment_name, attachment_size, attachment_mime";
+  "id, conversation_id, sender_id, content, nonce, is_deleted, read_at, created_at, edited_at, reply_to_id, attachment_path, attachment_kind, attachment_name, attachment_size, attachment_mime";
 
 export async function listMessages(conversationId: string): Promise<Message[]> {
   const { data, error } = await supabase
@@ -157,7 +181,10 @@ export async function listMessages(conversationId: string): Promise<Message[]> {
     .order("created_at", { ascending: true })
     .limit(500);
   if (error) throw new Error(error.message);
-  return data as Message[];
+  const rows = data as EncryptedMessageRow[];
+  if (!rows.length) return [];
+  const otherPartyPublicKey = await getPublicKey(await getConversationOtherParty(conversationId));
+  return Promise.all(rows.map((row) => decryptRow(row, otherPartyPublicKey)));
 }
 
 export type Attachment = {
@@ -186,12 +213,28 @@ export async function sendMessage(
   const me = await currentUserId();
   const attachment = options.attachment ?? null;
   const path = attachment ? await uploadAttachment(conversationId, attachment) : null;
+  const trimmed = content.trim();
+
+  let sealedContent = "";
+  let nonce: string | null = null;
+  if (trimmed) {
+    const otherPartyPublicKey = await getPublicKey(await getConversationOtherParty(conversationId));
+    if (!otherPartyPublicKey) {
+      if (path) await supabase.storage.from(ATTACHMENT_BUCKET).remove([path]);
+      throw new Error("This advocate hasn't enabled secure messaging yet — ask them to open the app once, then try again.");
+    }
+    const sealed = await encryptForRecipient(trimmed, otherPartyPublicKey);
+    sealedContent = sealed.content;
+    nonce = sealed.nonce;
+  }
+
   const { data, error } = await supabase
     .from("messages")
     .insert({
       conversation_id: conversationId,
       sender_id: me,
-      content: content.trim(),
+      content: sealedContent,
+      nonce,
       reply_to_id: options.replyToId ?? null,
       attachment_path: path,
       attachment_kind: attachment?.kind ?? null,
@@ -205,13 +248,21 @@ export async function sendMessage(
     if (path) await supabase.storage.from(ATTACHMENT_BUCKET).remove([path]);
     throw new Error(error.message);
   }
-  return data as Message;
+  // We already know the plaintext we just sent — no need to decrypt our own message.
+  const { nonce: _nonce, ...saved } = data as EncryptedMessageRow;
+  return { ...saved, content: trimmed };
 }
 
-export async function editMessage(id: string, content: string): Promise<void> {
+/** conversationId is needed to look up the recipient's public key to
+ * re-encrypt the edited text. */
+export async function editMessage(conversationId: string, id: string, content: string): Promise<void> {
+  const trimmed = content.trim();
+  const otherPartyPublicKey = await getPublicKey(await getConversationOtherParty(conversationId));
+  if (!otherPartyPublicKey) throw new Error("This advocate hasn't enabled secure messaging yet.");
+  const sealed = await encryptForRecipient(trimmed, otherPartyPublicKey);
   const { error } = await supabase
     .from("messages")
-    .update({ content: content.trim(), edited_at: new Date().toISOString() })
+    .update({ content: sealed.content, nonce: sealed.nonce, edited_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw new Error(error.message);
 }
@@ -234,13 +285,19 @@ export function subscribeToConversation(
   conversationId: string,
   handlers: { onUpsert: (message: Message) => void; onTyping: (userId: string, isTyping: boolean) => void }
 ) {
+  // Resolved once and reused for every incoming row on this channel.
+  const otherPartyPublicKey = getConversationOtherParty(conversationId).then(getPublicKey);
+
   const channel = supabase
     .channel(`chat:${conversationId}`)
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
-      (payload) => {
-        if (payload.new && "id" in payload.new) handlers.onUpsert(payload.new as Message);
+      async (payload) => {
+        if (payload.new && "id" in payload.new) {
+          const decrypted = await decryptRow(payload.new as EncryptedMessageRow, await otherPartyPublicKey);
+          handlers.onUpsert(decrypted);
+        }
       }
     )
     .on("broadcast", { event: "typing" }, ({ payload }) => handlers.onTyping(payload.userId, payload.isTyping))
@@ -286,6 +343,7 @@ export async function deleteMessage(message: Pick<Message, "id" | "attachment_pa
     .update({
       is_deleted: true,
       content: "[deleted]",
+      nonce: null,
       attachment_path: null,
       attachment_kind: null,
       attachment_name: null,

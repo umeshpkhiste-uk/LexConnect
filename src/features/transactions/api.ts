@@ -130,6 +130,46 @@ export async function updateTransactionCategory(id: string, category: string): P
   if (error) throw new Error(error.message);
 }
 
+/** Corrects a recorded entry — e.g. a mistyped amount — after the fact.
+ * Case/client-wise totals are views over this table, so they pick up the
+ * change automatically. */
+export async function updateTransaction(
+  id: string,
+  input: {
+    category: string;
+    amount: number;
+    transactionDate: Date;
+    paymentMethod?: string | null;
+    referenceNumber?: string | null;
+    notes?: string | null;
+  }
+): Promise<Transaction> {
+  const { data, error } = await supabase
+    .from("transactions")
+    .update({
+      category: input.category,
+      amount: input.amount,
+      transaction_date: input.transactionDate.toISOString().slice(0, 10),
+      payment_method: input.paymentMethod?.trim() || null,
+      reference_number: input.referenceNumber?.trim() || null,
+      notes: input.notes?.trim() || null,
+    })
+    .eq("id", id)
+    .select(COLUMNS)
+    .single();
+  if (error) throw new Error(error.message);
+  return data as Transaction;
+}
+
+/** Deletes a recorded entry (and its receipt file, if any) — e.g. one added
+ * by mistake. Case/client-wise totals recompute automatically since they're
+ * views over this table. */
+export async function deleteTransaction(transaction: Pick<Transaction, "id" | "receipt_path">): Promise<void> {
+  const { error } = await supabase.from("transactions").delete().eq("id", transaction.id);
+  if (error) throw new Error(error.message);
+  if (transaction.receipt_path) await supabase.storage.from(RECEIPT_BUCKET).remove([transaction.receipt_path]);
+}
+
 /** Short-lived signed URL for a transaction's receipt image. */
 export async function getReceiptUrl(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from(RECEIPT_BUCKET).createSignedUrl(path, 60 * 10);

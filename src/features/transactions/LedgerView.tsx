@@ -1,18 +1,29 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CaseDetail, getCase, listCases } from "@/features/cases/api";
 import { Client, getClient } from "@/features/clients/api";
 import { getMyProfile } from "@/features/profile/api";
 import { formatINR } from "@/shared/lib/format";
 import { ActionSheet, SheetAction } from "@/shared/ui/ActionSheet";
+import { Button } from "@/shared/ui/Button";
+import { DateField, toDateOnly } from "@/shared/ui/DateField";
 import { DonutChart } from "@/shared/ui/DonutChart";
 import { useTheme } from "@/shared/ui/theme";
 import { ClientTransaction, getReceiptUrl, listTransactionsForCase, listTransactionsForClient } from "./api";
 import { computeFeeTotals } from "./feeTotals";
-import { buildStatement, shareViaEmail, shareViaSms, shareViaSystem, shareViaWhatsApp } from "./shareStatement";
+import { buildStatement, shareViaEmail, shareViaSms, shareViaSystem, shareViaWhatsApp, StatementRange } from "./shareStatement";
+
+type SharePeriod = { label: string; range?: StatementRange };
+
+/** Inclusive first/last day of a "YYYY-MM" month key, as YYYY-MM-DD strings. */
+function monthRange(monthKey: string): StatementRange {
+  const [y, m] = monthKey.split("-").map(Number);
+  const lastDay = new Date(y, m, 0).getDate();
+  return { from: `${monthKey}-01`, to: `${monthKey}-${String(lastDay).padStart(2, "0")}` };
+}
 
 type Filter = "all" | "received" | "pending" | "expenses";
 
@@ -48,7 +59,11 @@ export function LedgerView({ clientId, caseId, variant = "screen" }: Props) {
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [month, setMonth] = useState<string | null>(null);
-  const [sheet, setSheet] = useState<"share" | "month" | null>(null);
+  const [sheet, setSheet] = useState<"sharePeriod" | "shareMonth" | "shareChannel" | "month" | null>(null);
+  const [sharePeriod, setSharePeriod] = useState<SharePeriod>({ label: "Complete transaction history" });
+  const [customRangeOpen, setCustomRangeOpen] = useState(false);
+  const [customFrom, setCustomFrom] = useState<Date | null>(null);
+  const [customTo, setCustomTo] = useState<Date | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -136,9 +151,32 @@ export function LedgerView({ clientId, caseId, variant = "screen" }: Props) {
       advocateName,
       transactions,
       totals: { totalFees: totals.totalFees, received: totals.received, pending: totals.pending },
+      range: sharePeriod.range,
+      periodLabel: sharePeriod.label,
     });
   const subject = `Payment statement${caseDetail ? ` — ${caseDetail.title}` : ""}`;
 
+  const choosePeriod = (period: SharePeriod) => {
+    setSharePeriod(period);
+    setSheet("shareChannel");
+  };
+
+  const currentMonthKey = new Date().toISOString().slice(0, 7);
+
+  // Tapping the share icon asks what to include before which app to send it
+  // through: the complete history, the current month, a past month, or a
+  // custom range.
+  const sharePeriodActions: SheetAction[] = [
+    { label: "Complete transaction history", icon: "infinite-outline", onPress: () => choosePeriod({ label: "Complete transaction history" }) },
+    { label: `This month (${monthLabel(currentMonthKey)})`, icon: "today-outline", onPress: () => choosePeriod({ label: monthLabel(currentMonthKey), range: monthRange(currentMonthKey) }) },
+    ...(months.length ? [{ label: "Choose a month…", icon: "calendar-outline" as const, onPress: () => setSheet("shareMonth") }] : []),
+    { label: "Custom date range…", icon: "options-outline", onPress: () => setCustomRangeOpen(true) },
+  ];
+  const shareMonthActions: SheetAction[] = months.map((m) => ({
+    label: monthLabel(m),
+    icon: "calendar-clear-outline",
+    onPress: () => choosePeriod({ label: monthLabel(m), range: monthRange(m) }),
+  }));
   const shareActions: SheetAction[] = [
     { label: "WhatsApp", icon: "logo-whatsapp", onPress: () => shareViaWhatsApp(statement(), client.phone) },
     {
@@ -210,7 +248,7 @@ export function LedgerView({ clientId, caseId, variant = "screen" }: Props) {
                 <Pressable onPress={addTransaction} hitSlop={10} accessibilityLabel="Add transaction">
                   <Ionicons name="add-circle-outline" size={26} color={onHero} />
                 </Pressable>
-                <Pressable onPress={() => setSheet("share")} hitSlop={10} accessibilityLabel="Share statement with client">
+                <Pressable onPress={() => setSheet("sharePeriod")} hitSlop={10} accessibilityLabel="Share statement with client">
                   <Ionicons name="share-social-outline" size={24} color={onHero} />
                 </Pressable>
               </View>
@@ -310,7 +348,7 @@ export function LedgerView({ clientId, caseId, variant = "screen" }: Props) {
                   <Ionicons name="add" size={24} color={colors.textInverse} />
                 </Pressable>
                 <Pressable
-                  onPress={() => setSheet("share")}
+                  onPress={() => setSheet("sharePeriod")}
                   accessibilityLabel="Share statement with client"
                   style={({ pressed }) => [
                     styles.cardAction,
@@ -431,11 +469,80 @@ export function LedgerView({ clientId, caseId, variant = "screen" }: Props) {
 
       <ActionSheet
         visible={sheet !== null}
-        title={sheet === "share" ? `Share statement with ${client.full_name}` : "Filter by month"}
-        actions={sheet === "share" ? shareActions : monthActions}
+        title={
+          sheet === "sharePeriod"
+            ? "Share statement — what period?"
+            : sheet === "shareMonth"
+              ? "Choose a month to share"
+              : sheet === "shareChannel"
+                ? `Send "${sharePeriod.label}" to ${client.full_name}`
+                : "Filter by month"
+        }
+        actions={
+          sheet === "sharePeriod"
+            ? sharePeriodActions
+            : sheet === "shareMonth"
+              ? shareMonthActions
+              : sheet === "shareChannel"
+                ? shareActions
+                : monthActions
+        }
         onClose={() => setSheet(null)}
       />
+
+      <CustomRangeSheet
+        visible={customRangeOpen}
+        from={customFrom}
+        to={customTo}
+        onChangeFrom={setCustomFrom}
+        onChangeTo={setCustomTo}
+        onCancel={() => setCustomRangeOpen(false)}
+        onConfirm={() => {
+          if (!customFrom || !customTo) return;
+          const from = toDateOnly(customFrom)!;
+          const to = toDateOnly(customTo)!;
+          const label = `${customFrom.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} – ${customTo.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`;
+          setCustomRangeOpen(false);
+          choosePeriod({ label, range: { from, to: to < from ? from : to } });
+        }}
+      />
     </View>
+  );
+}
+
+/** From/to date pair for a custom statement period, shown as a bottom sheet
+ * over whichever ActionSheet triggered it. */
+function CustomRangeSheet({
+  visible,
+  from,
+  to,
+  onChangeFrom,
+  onChangeTo,
+  onCancel,
+  onConfirm,
+}: {
+  visible: boolean;
+  from: Date | null;
+  to: Date | null;
+  onChangeFrom: (d: Date | null) => void;
+  onChangeTo: (d: Date | null) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const { colors, spacing, radius, typography } = useTheme();
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
+      <Pressable style={styles.backdrop} onPress={onCancel}>
+        <Pressable
+          style={[styles.sheet, { backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.lg }]}
+        >
+          <Text style={[typography.subtitle, { color: colors.textPrimary, marginBottom: spacing.md }]}>Custom date range</Text>
+          <DateField label="From" value={from} onChange={onChangeFrom} maximumDate={to ?? new Date()} />
+          <DateField label="To" value={to} onChange={onChangeTo} minimumDate={from ?? undefined} maximumDate={new Date()} />
+          <Button label="Share this range" onPress={onConfirm} disabled={!from || !to} pill />
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -524,6 +631,8 @@ function TransactionRow({ item, showCase }: { item: ClientTransaction; showCase:
 }
 
 const styles = StyleSheet.create({
+  backdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(15, 23, 42, 0.4)" },
+  sheet: {},
   cardActions: { flexDirection: "row", justifyContent: "flex-end" },
   cardFooter: { flexDirection: "row", alignItems: "center", borderTopWidth: StyleSheet.hairlineWidth },
   cardAction: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },

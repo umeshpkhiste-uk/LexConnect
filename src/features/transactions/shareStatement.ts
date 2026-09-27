@@ -2,14 +2,24 @@ import { Alert, Linking, Platform, Share } from "react-native";
 import { formatINR } from "@/shared/lib/format";
 import type { Transaction } from "./api";
 
+export type StatementRange = { from: string; to: string };
+
 type StatementInput = {
   clientName: string;
   caseTitle?: string | null;
   caseNumber?: string | null;
   advocateName?: string | null;
   transactions: (Transaction & { cases?: { title: string } | null })[];
-  /** Fee position from the agreed fees; defaults to summing the entries. */
+  /** Fee position from the agreed fees; defaults to summing the entries.
+   * Always the running, all-time position — a period statement still shows
+   * the real outstanding balance, not a balance scoped to that period. */
   totals?: { totalFees: number; received: number; pending: number };
+  /** Restricts the listed entries (and the "received in period" figure) to
+   * this inclusive date range (YYYY-MM-DD). Omit for the complete history. */
+  range?: StatementRange | null;
+  /** Shown on the statement, e.g. "September 2026" or "1 Jan – 31 Mar 2026".
+   * Defaults to "Complete transaction history" when `range` is omitted. */
+  periodLabel?: string;
 };
 
 function formatDay(dateStr: string) {
@@ -21,25 +31,42 @@ function formatDay(dateStr: string) {
  * Plain-text statement for the client. Only fee (income) entries are
  * included — the advocate's own expenses are internal bookkeeping.
  */
-export function buildStatement({ clientName, caseTitle, caseNumber, advocateName, transactions, totals }: StatementInput): string {
+export function buildStatement({
+  clientName,
+  caseTitle,
+  caseNumber,
+  advocateName,
+  transactions,
+  totals,
+  range,
+  periodLabel,
+}: StatementInput): string {
   const fees = transactions.filter((t) => t.type === "income");
-  const received = totals?.received ?? fees.filter((t) => t.status === "completed").reduce((s, t) => s + Number(t.amount), 0);
-  const pending = totals?.pending ?? fees.filter((t) => t.status === "pending").reduce((s, t) => s + Number(t.amount), 0);
-  const totalFees = totals?.totalFees ?? received + pending;
+  const periodFees = range ? fees.filter((t) => t.transaction_date >= range.from && t.transaction_date <= range.to) : fees;
+
+  const overallReceived = totals?.received ?? fees.filter((t) => t.status === "completed").reduce((s, t) => s + Number(t.amount), 0);
+  const overallPending = totals?.pending ?? fees.filter((t) => t.status === "pending").reduce((s, t) => s + Number(t.amount), 0);
+  const overallTotal = totals?.totalFees ?? overallReceived + overallPending;
+  const periodReceived = periodFees.filter((t) => t.status === "completed").reduce((s, t) => s + Number(t.amount), 0);
 
   const lines = [
     `Payment statement — ${clientName}`,
     caseTitle ? `Case: ${caseTitle}${caseNumber ? ` (${caseNumber})` : ""}` : null,
+    `Period: ${periodLabel ?? "Complete transaction history"}`,
     `Date: ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`,
     "",
-    `Total fees: ${formatINR(totalFees)}`,
-    `Received: ${formatINR(received)}`,
-    `Balance due: ${formatINR(pending)}`,
+    ...(range
+      ? [`Received in this period: ${formatINR(periodReceived)}`, `Outstanding balance (overall): ${formatINR(overallPending)}`]
+      : [
+          `Total fees: ${formatINR(overallTotal)}`,
+          `Received: ${formatINR(overallReceived)}`,
+          `Balance due: ${formatINR(overallPending)}`,
+        ]),
     "",
     "Details:",
-    ...(fees.length === 0
-      ? ["No fee entries yet."]
-      : [...fees]
+    ...(periodFees.length === 0
+      ? [range ? "No fee entries in this period." : "No fee entries yet."]
+      : [...periodFees]
           .sort((a, b) => a.transaction_date.localeCompare(b.transaction_date))
           .map(
             (t) =>

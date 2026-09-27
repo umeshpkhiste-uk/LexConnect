@@ -2,7 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { COURT_OPTIONS } from "@/shared/data/courts";
 import { BAR_COUNCILS, INDIA_STATES, STATE_NAMES } from "@/shared/data/indiaLocations";
+import { SUPPORTED_LANGUAGES } from "@/shared/i18n/languages";
 import { isSameState, lookupPincode, PincodeOption, pincodesForCity } from "@/shared/lib/pincode";
 import { enrolmentError, mobileError, normalizeEnrolment, normalizeIndianMobile, pincodeError } from "@/shared/lib/validation";
 import { Button } from "@/shared/ui/Button";
@@ -27,19 +29,10 @@ const PRACTICE_AREA_IDEAS = [
   "Intellectual Property",
   "Banking & Insolvency",
 ];
-const COURT_IDEAS = [
-  "Supreme Court of India",
-  "High Court",
-  "District Court",
-  "Sessions Court",
-  "Family Court",
-  "Consumer Commission",
-  "NCLT",
-  "NCLAT",
-  "ITAT",
-  "Labour Court",
-];
-const LANGUAGE_IDEAS = ["English", "Hindi", "Marathi", "Gujarati", "Tamil", "Telugu", "Kannada", "Bengali", "Malayalam", "Punjabi"];
+// Also the exact set the in-app Language setting can offer (settings.tsx /
+// language.tsx) — an advocate can only switch the app's language to one
+// they've listed here.
+const LANGUAGE_IDEAS = SUPPORTED_LANGUAGES.map((l) => l.name);
 const GENDERS: { key: Gender; label: string }[] = [
   { key: "male", label: "Male" },
   { key: "female", label: "Female" },
@@ -300,7 +293,7 @@ export function ProfileEditForm({ profile, email, submitLabel, secondaryLabel, o
           values={courts}
           onChange={setCourts}
           placeholder="Add a court"
-          suggestions={COURT_IDEAS}
+          suggestions={COURT_OPTIONS}
         />
         <TagInput label="Languages" values={languages} onChange={setLanguages} placeholder="Add a language" suggestions={LANGUAGE_IDEAS} />
       </View>

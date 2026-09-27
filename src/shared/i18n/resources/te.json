@@ -1,0 +1,44 @@
+{
+  "tabs": {
+    "home": "హోమ్",
+    "cases": "కేసులు",
+    "calendar": "క్యాలెండర్",
+    "network": "నెట్‌వర్క్",
+    "profile": "ప్రొఫైల్"
+  },
+  "settings": {
+    "privacy": "గోప్యత",
+    "profileVisibility": "ప్రొఫైల్ దృశ్యమానత",
+    "visibilityPublic": "పబ్లిక్",
+    "visibilityConnections": "కనెక్షన్లు",
+    "visibilityPrivate": "ప్రైవేట్",
+    "visibilityHelpPublic": "ఏ న్యాయవాది అయినా నెట్‌వర్క్ శోధనలో మిమ్మల్ని కనుగొనవచ్చు.",
+    "visibilityHelpConnections": "మీరు శోధనలో కనిపిస్తారు, కానీ కనెక్షన్లు మాత్రమే మీ పూర్తి ప్రొఫైల్‌ను చూడగలరు.",
+    "visibilityHelpPrivate": "మీరు నెట్‌వర్క్ శోధన నుండి దాచబడ్డారు.",
+    "preferences": "ప్రాధాన్యతలు",
+    "theme": "థీమ్",
+    "language": "భాష",
+    "manageProfile": "ప్రొఫైల్‌ను నిర్వహించండి",
+    "security": "భద్రత",
+    "appLock": "యాప్ లాక్ (పిన్ లేదా పాటర్న్)",
+    "appLockOnPin": "ఆన్ · పిన్",
+    "appLockOnPattern": "ఆన్ · పాటర్న్",
+    "appLockOff": "ఆఫ్",
+    "account": "ఖాతా",
+    "loginEmail": "లాగిన్ ఇమెయిల్",
+    "changePassword": "పాస్‌వర్డ్ మార్చండి",
+    "notifications": "నోటిఫికేషన్లు",
+    "notificationsOn": "ఆన్",
+    "notificationsOff": "ఆఫ్",
+    "yourData": "మీ డేటా",
+    "exportData": "నా డేటాను ఎగుమతి చేయండి",
+    "exportDataPreparing": "ఎగుమతి సిద్ధమవుతోంది…",
+    "exportDataSubtitle": "మీ సొంతమైన ప్రతిదాని కాపీని షేర్ చేయండి"
+  },
+  "language": {
+    "title": "భాష",
+    "subtitle": "మీరు మీ ప్రొఫైల్‌లో జోడించిన భాషలు మాత్రమే ఇక్కడ అందుబాటులో ఉన్నాయి.",
+    "noneAvailable": "మీ ప్రొఫైల్‌లోని ఏ భాషకైనా ఇంకా యాప్ అనువాదం అందుబాటులో లేదు.",
+    "addInProfile": "దీన్ని ఇక్కడ అన్‌లాక్ చేయడానికి మీ ప్రొఫైల్‌లో మద్దతు ఉన్న భాషను జోడించండి: ఇంగ్లీష్, హిందీ, మరాఠీ, గుజరాతీ, తమిళం, తెలుగు, కన్నడ, బెంగాలీ, మలయాళం, పంజాబీ."
+  }
+}

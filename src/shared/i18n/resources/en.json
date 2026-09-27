@@ -1,0 +1,44 @@
+{
+  "tabs": {
+    "home": "Home",
+    "cases": "Cases",
+    "calendar": "Calendar",
+    "network": "Network",
+    "profile": "Profile"
+  },
+  "settings": {
+    "privacy": "Privacy",
+    "profileVisibility": "Profile visibility",
+    "visibilityPublic": "Public",
+    "visibilityConnections": "Connections",
+    "visibilityPrivate": "Private",
+    "visibilityHelpPublic": "Any advocate can find you in Network search.",
+    "visibilityHelpConnections": "You appear in search, but only connections see your full profile.",
+    "visibilityHelpPrivate": "You're hidden from Network search.",
+    "preferences": "Preferences",
+    "theme": "Theme",
+    "language": "Language",
+    "manageProfile": "Manage profile",
+    "security": "Security",
+    "appLock": "App lock (PIN or pattern)",
+    "appLockOnPin": "On · PIN",
+    "appLockOnPattern": "On · Pattern",
+    "appLockOff": "Off",
+    "account": "Account",
+    "loginEmail": "Login email",
+    "changePassword": "Change password",
+    "notifications": "Notifications",
+    "notificationsOn": "On",
+    "notificationsOff": "Off",
+    "yourData": "Your data",
+    "exportData": "Export my data",
+    "exportDataPreparing": "Preparing export…",
+    "exportDataSubtitle": "Share a copy of everything you own"
+  },
+  "language": {
+    "title": "Language",
+    "subtitle": "Only languages you added to your profile are available here.",
+    "noneAvailable": "None of the languages on your profile have app translations yet.",
+    "addInProfile": "Add a supported language in your profile to unlock it here: English, Hindi, Marathi, Gujarati, Tamil, Telugu, Kannada, Bengali, Malayalam, Punjabi."
+  }
+}

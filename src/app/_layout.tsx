@@ -1,11 +1,14 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
+import { enableAppSwitcherProtectionAsync, usePreventScreenCapture } from "expo-screen-capture";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, View } from "react-native";
 import { AuthProvider, useAuth } from "@/features/auth/AuthProvider";
 import { getSavedLoginUser, isBiometricEnabledFor, loginWithSavedSession } from "@/features/biometric/biometric";
 import { getAppLockMethod, rememberLockedAccount } from "@/features/applock/appLock";
 import { AppLockScreen } from "@/features/applock/AppLockScreen";
+import { ensureKeyPair } from "@/features/messaging/encryption";
 import { PresenceProvider } from "@/features/presence/PresenceProvider";
+import { restoreLanguagePreference } from "@/shared/i18n/i18n";
 import { AppFrame } from "@/shared/ui/appFrame";
 import { useTheme } from "@/shared/ui/theme";
 import { restoreThemePreference } from "@/shared/ui/themePreference";
@@ -20,6 +23,13 @@ function RootNavigator() {
   const [lockState, setLockState] = useState<LockState>("checking");
   const [savedUserId, setSavedUserId] = useState<string | null>(null);
   const hasCheckedLock = useRef(false);
+
+  // Makes sure a device key pair exists (and its public half is uploaded)
+  // as soon as this device has a session, so other advocates can message
+  // this account securely without waiting for it to open a chat first.
+  useEffect(() => {
+    if (session) ensureKeyPair().catch(() => {});
+  }, [session]);
 
   // The lock (Face ID and/or PIN / pattern) applies only to a session
   // restored on cold start. A session created during this run (password or
@@ -149,8 +159,18 @@ function NavigationTheme({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
+  // Blocks screenshots and screen recording for the whole app (Android:
+  // FLAG_SECURE, shows a black screen to anything that tries; iOS 13+:
+  // the OS itself refuses the capture). Case, client and financial data
+  // shown here should never end up in a photo library or a recording.
+  usePreventScreenCapture();
+
   useEffect(() => {
     restoreThemePreference();
+    restoreLanguagePreference();
+    // iOS can't block the app-switcher snapshot the same way, so this blurs
+    // it instead of leaving sensitive content visible when the app isn't focused.
+    if (Platform.OS === "ios") enableAppSwitcherProtectionAsync().catch(() => {});
   }, []);
 
   return (

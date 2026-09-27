@@ -1,0 +1,44 @@
+{
+  "tabs": {
+    "home": "ಮುಖಪುಟ",
+    "cases": "ಪ್ರಕರಣಗಳು",
+    "calendar": "ಕ್ಯಾಲೆಂಡರ್",
+    "network": "ನೆಟ್‌ವರ್ಕ್",
+    "profile": "ಪ್ರೊಫೈಲ್"
+  },
+  "settings": {
+    "privacy": "ಗೌಪ್ಯತೆ",
+    "profileVisibility": "ಪ್ರೊಫೈಲ್ ಗೋಚರತೆ",
+    "visibilityPublic": "ಸಾರ್ವಜನಿಕ",
+    "visibilityConnections": "ಸಂಪರ್ಕಗಳು",
+    "visibilityPrivate": "ಖಾಸಗಿ",
+    "visibilityHelpPublic": "ಯಾವುದೇ ವಕೀಲರು ನೆಟ್‌ವರ್ಕ್ ಹುಡುಕಾಟದಲ್ಲಿ ನಿಮ್ಮನ್ನು ಕಂಡುಹಿಡಿಯಬಹುದು.",
+    "visibilityHelpConnections": "ನೀವು ಹುಡುಕಾಟದಲ್ಲಿ ಕಾಣಿಸುತ್ತೀರಿ, ಆದರೆ ಸಂಪರ್ಕಗಳು ಮಾತ್ರ ನಿಮ್ಮ ಪೂರ್ಣ ಪ್ರೊಫೈಲ್ ಅನ್ನು ನೋಡಬಹುದು.",
+    "visibilityHelpPrivate": "ನೀವು ನೆಟ್‌ವರ್ಕ್ ಹುಡುಕಾಟದಿಂದ ಮರೆಯಾಗಿದ್ದೀರಿ.",
+    "preferences": "ಆದ್ಯತೆಗಳು",
+    "theme": "ಥೀಮ್",
+    "language": "ಭಾಷೆ",
+    "manageProfile": "ಪ್ರೊಫೈಲ್ ನಿರ್ವಹಿಸಿ",
+    "security": "ಭದ್ರತೆ",
+    "appLock": "ಆ್ಯಪ್ ಲಾಕ್ (ಪಿನ್ ಅಥವಾ ಪ್ಯಾಟರ್ನ್)",
+    "appLockOnPin": "ಆನ್ · ಪಿನ್",
+    "appLockOnPattern": "ಆನ್ · ಪ್ಯಾಟರ್ನ್",
+    "appLockOff": "ಆಫ್",
+    "account": "ಖಾತೆ",
+    "loginEmail": "ಲಾಗಿನ್ ಇಮೇಲ್",
+    "changePassword": "ಪಾಸ್‌ವರ್ಡ್ ಬದಲಾಯಿಸಿ",
+    "notifications": "ಅಧಿಸೂಚನೆಗಳು",
+    "notificationsOn": "ಆನ್",
+    "notificationsOff": "ಆಫ್",
+    "yourData": "ನಿಮ್ಮ ಡೇಟಾ",
+    "exportData": "ನನ್ನ ಡೇಟಾವನ್ನು ರಫ್ತು ಮಾಡಿ",
+    "exportDataPreparing": "ರಫ್ತು ಸಿದ್ಧಗೊಳ್ಳುತ್ತಿದೆ…",
+    "exportDataSubtitle": "ನಿಮ್ಮ ಸ್ವಂತದ ಎಲ್ಲದರ ಪ್ರತಿಯನ್ನು ಹಂಚಿಕೊಳ್ಳಿ"
+  },
+  "language": {
+    "title": "ಭಾಷೆ",
+    "subtitle": "ನೀವು ನಿಮ್ಮ ಪ್ರೊಫೈಲ್‌ಗೆ ಸೇರಿಸಿದ ಭಾಷೆಗಳು ಮಾತ್ರ ಇಲ್ಲಿ ಲಭ್ಯವಿದೆ.",
+    "noneAvailable": "ನಿಮ್ಮ ಪ್ರೊಫೈಲ್‌ನಲ್ಲಿರುವ ಯಾವುದೇ ಭಾಷೆಗೆ ಇನ್ನೂ ಆ್ಯಪ್ ಅನುವಾದ ಲಭ್ಯವಿಲ್ಲ.",
+    "addInProfile": "ಇದನ್ನು ಇಲ್ಲಿ ಅನ್‌ಲಾಕ್ ಮಾಡಲು ನಿಮ್ಮ ಪ್ರೊಫೈಲ್‌ಗೆ ಬೆಂಬಲಿತ ಭಾಷೆಯನ್ನು ಸೇರಿಸಿ: ಇಂಗ್ಲಿಷ್, ಹಿಂದಿ, ಮರಾಠಿ, ಗುಜರಾತಿ, ತಮಿಳು, ತೆಲುಗು, ಕನ್ನಡ, ಬಂಗಾಳಿ, ಮಲಯಾಳಂ, ಪಂಜಾಬಿ."
+  }
+}

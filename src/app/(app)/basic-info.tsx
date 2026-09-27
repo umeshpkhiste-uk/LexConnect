@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { getNetworkStats } from "@/features/network/api";
 import { AdvocateProfile, completeOnboarding, countMyCases, getMyProfile } from "@/features/profile/api";
@@ -110,13 +110,6 @@ export default function BasicInfoScreen() {
           />
 
           <Button label="Edit profile details" onPress={() => setIsEditing(true)} pill />
-          <Pressable
-            onPress={() => router.push("/(app)/settings")}
-            style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: spacing.sm }}
-          >
-            <Ionicons name="settings-outline" size={18} color={colors.accent} />
-            <Text style={[typography.bodyStrong, { color: colors.textPrimary }]}>Privacy & account settings</Text>
-          </Pressable>
         </>
       )}
     </ScrollView>

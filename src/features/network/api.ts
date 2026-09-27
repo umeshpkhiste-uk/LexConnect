@@ -133,7 +133,7 @@ export type ConnectionRow = {
   id: string;
   status: "pending" | "accepted" | "rejected";
   isIncoming: boolean;
-  otherParty: { id: string; full_name: string; profile_photo_url: string | null };
+  otherParty: { id: string; full_name: string; profile_photo_url: string | null; phone: string | null };
 };
 
 export async function listMyConnections(): Promise<ConnectionRow[]> {
@@ -151,13 +151,22 @@ export async function listMyConnections(): Promise<ConnectionRow[]> {
   // their own row, so an embedded join through the FK would silently return
   // null for everyone except connections involving me.
   const otherIds = [...new Set(rows.map((r) => (r.requester_id === me ? r.addressee_id : r.requester_id)))];
-  const { data: profiles, error: profilesError } = await supabase
-    .from("public_advocate_profiles")
-    .select("id, full_name, profile_photo_url")
-    .in("id", otherIds);
-  if (profilesError) throw new Error(profilesError.message);
+  const acceptedOtherIds = [
+    ...new Set(rows.filter((r) => r.status === "accepted").map((r) => (r.requester_id === me ? r.addressee_id : r.requester_id))),
+  ];
+  const [profilesResult, phonesResult] = await Promise.all([
+    supabase.from("public_advocate_profiles").select("id, full_name, profile_photo_url").in("id", otherIds),
+    // Only accepted connections' numbers are ever returned — see migration 0040.
+    acceptedOtherIds.length
+      ? supabase.rpc("connection_phone_numbers", { p_ids: acceptedOtherIds })
+      : Promise.resolve({ data: [] as { id: string; phone: string }[], error: null }),
+  ]);
+  if (profilesResult.error) throw new Error(profilesResult.error.message);
+  if (phonesResult.error) throw new Error(phonesResult.error.message);
 
-  const profileById = new Map(profiles.map((p) => [p.id, p]));
+  const profileById = new Map(profilesResult.data.map((p) => [p.id, p]));
+  const phones = (phonesResult.data ?? []) as { id: string; phone: string }[];
+  const phoneById = new Map(phones.map((p) => [p.id, p.phone]));
 
   return rows
     .map((r) => {
@@ -168,7 +177,7 @@ export async function listMyConnections(): Promise<ConnectionRow[]> {
         id: r.id,
         status: r.status,
         isIncoming: r.addressee_id === me,
-        otherParty,
+        otherParty: { ...otherParty, phone: phoneById.get(otherId) ?? null },
       };
     })
     .filter((r): r is ConnectionRow => r !== null);

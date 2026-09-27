@@ -1,13 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, Image, ImageBackground, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { requestPasswordReset } from "@/features/auth/api";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { signOutKeepingBiometric } from "@/features/biometric/biometric";
-import { getUnreadCount } from "@/features/notifications/api";
+import { syncCalendarReminders } from "@/features/notifications/device";
 import { OnlineDot } from "@/features/presence/OnlineDot";
-import { AdvocateProfile, getMyProfile } from "@/features/profile/api";
+import { AdvocateProfile, getMyProfile, updateMyProfile } from "@/features/profile/api";
+import { nameForLanguageCode } from "@/shared/i18n/languages";
 import { SettingsGroup, SettingsRow } from "@/shared/ui/SettingsGroup";
 import { HomeButton } from "@/shared/ui/HomeButton";
 import { confirmDeleteAccount } from "@/features/account/confirmDeleteAccount";
@@ -21,14 +24,23 @@ const verificationLabel: Record<AdvocateProfile["verification_status"], string> 
   expired: "Verification expired",
 };
 
+type Visibility = AdvocateProfile["profile_visibility"];
+
+const visibilityLabel: Record<Visibility, string> = {
+  public: "Public",
+  connections_only: "Connections only",
+  private: "Private",
+};
+
 const comingSoon = (what: string) => () => Alert.alert("Coming soon", `${what} arrive in a later phase.`);
 
 export default function ProfileScreen() {
+  const { t, i18n } = useTranslation();
   const { colors, spacing, radius, typography } = useTheme();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const [profile, setProfile] = useState<AdvocateProfile | null>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsOn, setNotificationsOn] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -39,11 +51,11 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
-      Promise.allSettled([getMyProfile(), getUnreadCount()])
-        .then(([profileResult, unreadResult]) => {
+      getMyProfile()
+        .then((profile) => {
           if (!isMounted) return;
-          if (profileResult.status === "fulfilled") setProfile(profileResult.value);
-          if (unreadResult.status === "fulfilled") setUnreadCount(unreadResult.value);
+          setProfile(profile);
+          setNotificationsOn(profile.notifications_enabled !== false);
         })
         .finally(() => {
           if (isMounted) setIsLoading(false);
@@ -53,6 +65,53 @@ export default function ProfileScreen() {
       };
     }, []),
   );
+
+  const handleVisibilityPress = () => {
+    if (!profile) return;
+    const setVisibility = (next: Visibility) => async () => {
+      const previous = profile.profile_visibility;
+      setProfile({ ...profile, profile_visibility: next });
+      try {
+        await updateMyProfile({ profile_visibility: next });
+      } catch (err) {
+        setProfile((p) => (p ? { ...p, profile_visibility: previous } : p));
+        Alert.alert("Couldn't update visibility", err instanceof Error ? err.message : "Something went wrong");
+      }
+    };
+    Alert.alert("Manage profile", "Choose who can find your profile in Network search.", [
+      { text: visibilityLabel.public, onPress: setVisibility("public") },
+      { text: visibilityLabel.connections_only, onPress: setVisibility("connections_only") },
+      { text: visibilityLabel.private, onPress: setVisibility("private") },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const handleChangePassword = () => {
+    if (!email) return;
+    Alert.alert("Change password", `We'll email a password reset link to ${email}.`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Send link",
+        onPress: async () => {
+          const { error } = await requestPasswordReset(email);
+          if (error) Alert.alert("Couldn't send reset link", error);
+          else Alert.alert("Check your email", "Open the link on this device to set a new password.");
+        },
+      },
+    ]);
+  };
+
+  const handleNotificationsToggle = async (enabled: boolean) => {
+    setNotificationsOn(enabled);
+    try {
+      await updateMyProfile({ notifications_enabled: enabled });
+      // Turn calendar reminders on this phone on / off straight away.
+      await syncCalendarReminders(enabled).catch(() => {});
+    } catch (err) {
+      setNotificationsOn(!enabled);
+      Alert.alert("Couldn't update notifications", err instanceof Error ? err.message : "Something went wrong");
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert("Log out", "Are you sure you want to log out?", [
@@ -130,20 +189,27 @@ export default function ProfileScreen() {
             subtitle={profile ? verificationLabel[profile.verification_status] : undefined}
             onPress={comingSoon("The verification workflow and bar registration details")}
           />
-          <SettingsRow
-            icon="mail-unread-outline"
-            label="Notifications"
-            subtitle={unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
-            onPress={() => router.push("/(app)/notifications")}
-          />
         </SettingsGroup>
 
-        <SettingsGroup>
+        <SettingsGroup title={t("settings.account")}>
           <SettingsRow
-            icon="settings-outline"
-            label="Settings"
-            subtitle="Theme, notifications, Face ID, app lock, privacy"
-            onPress={() => router.push("/(app)/settings")}
+            icon="eye-outline"
+            label={t("settings.manageProfile")}
+            subtitle={profile ? visibilityLabel[profile.profile_visibility] : undefined}
+            onPress={handleVisibilityPress}
+          />
+          <SettingsRow icon="key-outline" label={t("settings.changePassword")} onPress={handleChangePassword} />
+          <SettingsRow
+            icon="notifications-outline"
+            label={t("settings.notifications")}
+            subtitle={notificationsOn ? t("settings.notificationsOn") : t("settings.notificationsOff")}
+            toggle={{ value: notificationsOn, onChange: handleNotificationsToggle }}
+          />
+          <SettingsRow
+            icon="language-outline"
+            label={t("settings.language")}
+            subtitle={nameForLanguageCode(i18n.language)}
+            onPress={() => router.push("/(app)/language")}
           />
         </SettingsGroup>
 
@@ -151,6 +217,15 @@ export default function ProfileScreen() {
           <SettingsRow icon="help-circle-outline" label="FAQ" onPress={() => router.push("/(app)/faq")} />
           <SettingsRow icon="information-circle-outline" label="About app" onPress={() => router.push("/(app)/about")} />
           <SettingsRow icon="chatbubble-ellipses-outline" label="Help & support" onPress={comingSoon("Help and support")} />
+        </SettingsGroup>
+
+        <SettingsGroup>
+          <SettingsRow
+            icon="settings-outline"
+            label="Settings"
+            subtitle="Theme, Face ID, app lock, data export"
+            onPress={() => router.push("/(app)/settings")}
+          />
         </SettingsGroup>
 
         <SettingsGroup>

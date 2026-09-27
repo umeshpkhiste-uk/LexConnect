@@ -1,0 +1,84 @@
+import "react-native-get-random-values";
+import { decode as decodeBase64, encode as encodeBase64 } from "base64-arraybuffer";
+import * as SecureStore from "expo-secure-store";
+import nacl from "tweetnacl";
+import { supabase } from "@/shared/lib/supabase";
+
+const SECRET_KEY_STORE_KEY = "messaging-secret-key-v1";
+
+let cachedKeyPair: nacl.BoxKeyPair | null = null;
+const publicKeyCache = new Map<string, string | null>();
+
+function toBase64(bytes: Uint8Array): string {
+  return encodeBase64(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer);
+}
+
+function fromBase64(value: string): Uint8Array {
+  return new Uint8Array(decodeBase64(value));
+}
+
+/**
+ * This device's Curve25519 key pair for messaging. The secret key is
+ * generated on-device and stored only in the OS keychain/keystore
+ * (expo-secure-store) — it is never sent anywhere. The public half is
+ * uploaded to the advocate's profile so others can encrypt to them.
+ *
+ * Because the secret key never leaves the device, reinstalling the app or
+ * switching devices means a new key pair (and losing the ability to decrypt
+ * older messages on that device) — that trade-off is what makes this
+ * actually end-to-end: there is no server-side copy to recover from.
+ */
+export async function ensureKeyPair(): Promise<nacl.BoxKeyPair> {
+  if (cachedKeyPair) return cachedKeyPair;
+
+  const stored = await SecureStore.getItemAsync(SECRET_KEY_STORE_KEY);
+  const keyPair = stored ? nacl.box.keyPair.fromSecretKey(fromBase64(stored)) : nacl.box.keyPair();
+  if (!stored) await SecureStore.setItemAsync(SECRET_KEY_STORE_KEY, toBase64(keyPair.secretKey));
+  cachedKeyPair = keyPair;
+
+  const publicKeyB64 = toBase64(keyPair.publicKey);
+  const { data, error } = await supabase.auth.getUser();
+  if (!error && data.user) {
+    // Best-effort: publish this device's public key so others can message
+    // us securely. A failure here just means we retry next launch.
+    supabase.from("advocate_profiles").update({ messaging_public_key: publicKeyB64 }).eq("id", data.user.id).then(() => {}, () => {});
+  }
+  return keyPair;
+}
+
+/** The other party's public key, cached for the session. Null if they
+ * haven't opened the app since encryption was introduced. */
+export async function getPublicKey(userId: string): Promise<string | null> {
+  if (publicKeyCache.has(userId)) return publicKeyCache.get(userId) ?? null;
+  const { data, error } = await supabase.from("public_advocate_profiles").select("messaging_public_key").eq("id", userId).maybeSingle();
+  const key = error ? null : (data?.messaging_public_key ?? null);
+  publicKeyCache.set(userId, key);
+  return key;
+}
+
+export type EncryptedPayload = { content: string; nonce: string };
+
+/** Encrypts plaintext for a specific recipient. Throws if the recipient
+ * hasn't published a public key yet (they need to open the app once). */
+export async function encryptForRecipient(plaintext: string, recipientPublicKeyB64: string): Promise<EncryptedPayload> {
+  const keyPair = await ensureKeyPair();
+  const nonce = nacl.randomBytes(nacl.box.nonceLength);
+  const sealed = nacl.box(new TextEncoder().encode(plaintext), nonce, fromBase64(recipientPublicKeyB64), keyPair.secretKey);
+  return { content: toBase64(sealed), nonce: toBase64(nonce) };
+}
+
+/**
+ * Decrypts a message. Curve25519's Diffie-Hellman shared secret is
+ * symmetric — (mySecret, theirPublic) and (theirSecret, myPublic) yield the
+ * same key — so this works whether I sent the message or received it; I
+ * always decrypt using the OTHER party's public key plus my own secret key.
+ */
+export async function decryptFromParty(payload: EncryptedPayload, otherPartyPublicKeyB64: string): Promise<string | null> {
+  const keyPair = await ensureKeyPair();
+  try {
+    const opened = nacl.box.open(fromBase64(payload.content), fromBase64(payload.nonce), fromBase64(otherPartyPublicKeyB64), keyPair.secretKey);
+    return opened ? new TextDecoder().decode(opened) : null;
+  } catch {
+    return null;
+  }
+}

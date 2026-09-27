@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -205,12 +206,40 @@ export default function NetworkScreen() {
     }
   };
 
+  const handleEyes = async (post: FeedPost) => {
+    setFeed((prev) =>
+      prev.map((p) => (p.id === post.id ? { ...p, eyed_by_me: !p.eyed_by_me, eyes_count: p.eyes_count + (p.eyed_by_me ? -1 : 1) } : p))
+    );
+    try {
+      await toggleReaction(post.id, "eyes", post.eyed_by_me);
+    } catch {
+      load();
+    }
+  };
+
+  const handlePray = async (post: FeedPost) => {
+    setFeed((prev) =>
+      prev.map((p) => (p.id === post.id ? { ...p, prayed_by_me: !p.prayed_by_me, pray_count: p.pray_count + (p.prayed_by_me ? -1 : 1) } : p))
+    );
+    try {
+      await toggleReaction(post.id, "pray", post.prayed_by_me);
+    } catch {
+      load();
+    }
+  };
+
   const bumpComments = (postId: string) =>
     setFeed((prev) => prev.map((p) => (p.id === postId ? { ...p, comments_count: p.comments_count + 1 } : p)));
 
+  const dropComments = (postId: string) =>
+    setFeed((prev) => prev.map((p) => (p.id === postId ? { ...p, comments_count: Math.max(0, p.comments_count - 1) } : p)));
+
+  const bumpShares = (postId: string) =>
+    setFeed((prev) => prev.map((p) => (p.id === postId ? { ...p, share_count: p.share_count + 1 } : p)));
+
   const handleConnect = async (profile: PublicProfile) => {
     setConnections((prev) => [
-      { id: `optimistic-${profile.id}`, status: "pending", isIncoming: false, otherParty: profile },
+      { id: `optimistic-${profile.id}`, status: "pending", isIncoming: false, otherParty: { ...profile, phone: null } },
       ...prev,
     ]);
     try {
@@ -340,7 +369,11 @@ export default function NetworkScreen() {
                   post={post}
                   onToggleEndorse={() => handleEndorse(post)}
                   onToggleHeart={() => handleHeart(post)}
+                  onToggleEyes={() => handleEyes(post)}
+                  onTogglePray={() => handlePray(post)}
                   onCommentAdded={() => bumpComments(post.id)}
+                  onCommentRemoved={() => dropComments(post.id)}
+                  onShared={() => bumpShares(post.id)}
                   isOwn={post.author_id === me?.id}
                   onEdited={(update) => setFeed((prev) => prev.map((p) => (p.id === post.id ? { ...p, ...update } : p)))}
                   onDeleted={() => setFeed((prev) => prev.filter((p) => p.id !== post.id))}
@@ -376,7 +409,7 @@ export default function NetworkScreen() {
                       right={
                         <View style={{ flexDirection: "row", gap: 6 }}>
                           <SmallButton icon="checkmark" label="Accept" filled onPress={() => handleRespond(c, true)} />
-                          <SmallButton icon="close" label="" onPress={() => handleRespond(c, false)} />
+                          <SmallButton icon="close" label="" accessibilityLabel="Decline" onPress={() => handleRespond(c, false)} />
                         </View>
                       }
                     />
@@ -398,7 +431,22 @@ export default function NetworkScreen() {
                         photoUrl={c.otherParty.profile_photo_url}
                         onPress={() => router.push(`/(app)/network/${c.otherParty.id}`)}
                         right={
-                          <SmallButton icon="chatbubble-ellipses-outline" label="Message" onPress={() => openChat(c.otherParty.id)} />
+                          <View style={{ flexDirection: "row", gap: 6 }}>
+                            {c.otherParty.phone ? (
+                              <SmallButton
+                                icon="call-outline"
+                                label=""
+                                accessibilityLabel="Call"
+                                onPress={() => Linking.openURL(`tel:${c.otherParty.phone}`)}
+                              />
+                            ) : null}
+                            <SmallButton
+                              icon="chatbubble-ellipses-outline"
+                              label=""
+                              accessibilityLabel="Message"
+                              onPress={() => openChat(c.otherParty.id)}
+                            />
+                          </View>
                         }
                       />
                   ))}
@@ -543,17 +591,20 @@ function SmallButton({
   label,
   onPress,
   filled,
+  accessibilityLabel,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
   filled?: boolean;
+  /** Required when label is empty (icon-only), since there's no text for screen readers to fall back on. */
+  accessibilityLabel?: string;
 }) {
   const { colors, radius, typography } = useTheme();
   return (
     <Pressable
       onPress={onPress}
-      accessibilityLabel={label || "Decline"}
+      accessibilityLabel={accessibilityLabel ?? label}
       style={({ pressed }) => [
         styles.smallButton,
         { borderRadius: radius.sm, backgroundColor: filled ? colors.brand : colors.surfaceAlt, opacity: pressed ? 0.85 : 1 },

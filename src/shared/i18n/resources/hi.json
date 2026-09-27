@@ -1,0 +1,44 @@
+{
+  "tabs": {
+    "home": "होम",
+    "cases": "केस",
+    "calendar": "कैलेंडर",
+    "network": "नेटवर्क",
+    "profile": "प्रोफ़ाइल"
+  },
+  "settings": {
+    "privacy": "गोपनीयता",
+    "profileVisibility": "प्रोफ़ाइल दृश्यता",
+    "visibilityPublic": "सार्वजनिक",
+    "visibilityConnections": "कनेक्शन",
+    "visibilityPrivate": "निजी",
+    "visibilityHelpPublic": "कोई भी अधिवक्ता नेटवर्क खोज में आपको ढूंढ सकता है।",
+    "visibilityHelpConnections": "आप खोज में दिखाई देते हैं, लेकिन केवल कनेक्शन ही आपकी पूरी प्रोफ़ाइल देख सकते हैं।",
+    "visibilityHelpPrivate": "आप नेटवर्क खोज से छिपे हुए हैं।",
+    "preferences": "प्राथमिकताएँ",
+    "theme": "थीम",
+    "language": "भाषा",
+    "manageProfile": "प्रोफ़ाइल प्रबंधित करें",
+    "security": "सुरक्षा",
+    "appLock": "ऐप लॉक (पिन या पैटर्न)",
+    "appLockOnPin": "चालू · पिन",
+    "appLockOnPattern": "चालू · पैटर्न",
+    "appLockOff": "बंद",
+    "account": "खाता",
+    "loginEmail": "लॉगिन ईमेल",
+    "changePassword": "पासवर्ड बदलें",
+    "notifications": "सूचनाएं",
+    "notificationsOn": "चालू",
+    "notificationsOff": "बंद",
+    "yourData": "आपका डेटा",
+    "exportData": "मेरा डेटा निर्यात करें",
+    "exportDataPreparing": "निर्यात तैयार किया जा रहा है…",
+    "exportDataSubtitle": "अपनी सारी जानकारी की एक प्रति साझा करें"
+  },
+  "language": {
+    "title": "भाषा",
+    "subtitle": "यहाँ केवल वे भाषाएँ उपलब्ध हैं जिन्हें आपने अपनी प्रोफ़ाइल में जोड़ा है।",
+    "noneAvailable": "आपकी प्रोफ़ाइल की किसी भी भाषा के लिए अभी ऐप अनुवाद उपलब्ध नहीं है।",
+    "addInProfile": "इसे यहाँ अनलॉक करने के लिए अपनी प्रोफ़ाइल में एक समर्थित भाषा जोड़ें: अंग्रेज़ी, हिंदी, मराठी, गुजराती, तमिल, तेलुगु, कन्नड़, बंगाली, मलयालम, पंजाबी।"
+  }
+}

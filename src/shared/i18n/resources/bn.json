@@ -1,0 +1,44 @@
+{
+  "tabs": {
+    "home": "হোম",
+    "cases": "মামলা",
+    "calendar": "ক্যালেন্ডার",
+    "network": "নেটওয়ার্ক",
+    "profile": "প্রোফাইল"
+  },
+  "settings": {
+    "privacy": "গোপনীয়তা",
+    "profileVisibility": "প্রোফাইল দৃশ্যমানতা",
+    "visibilityPublic": "সর্বজনীন",
+    "visibilityConnections": "সংযোগ",
+    "visibilityPrivate": "ব্যক্তিগত",
+    "visibilityHelpPublic": "যেকোনো আইনজীবী নেটওয়ার্ক অনুসন্ধানে আপনাকে খুঁজে পেতে পারেন।",
+    "visibilityHelpConnections": "আপনি অনুসন্ধানে দেখা যাবেন, তবে শুধুমাত্র সংযোগগুলি আপনার সম্পূর্ণ প্রোফাইল দেখতে পাবে।",
+    "visibilityHelpPrivate": "আপনি নেটওয়ার্ক অনুসন্ধান থেকে লুকানো আছেন।",
+    "preferences": "পছন্দসমূহ",
+    "theme": "থিম",
+    "language": "ভাষা",
+    "manageProfile": "প্রোফাইল পরিচালনা করুন",
+    "security": "নিরাপত্তা",
+    "appLock": "অ্যাপ লক (পিন বা প্যাটার্ন)",
+    "appLockOnPin": "চালু · পিন",
+    "appLockOnPattern": "চালু · প্যাটার্ন",
+    "appLockOff": "বন্ধ",
+    "account": "অ্যাকাউন্ট",
+    "loginEmail": "লগইন ইমেল",
+    "changePassword": "পাসওয়ার্ড পরিবর্তন করুন",
+    "notifications": "বিজ্ঞপ্তি",
+    "notificationsOn": "চালু",
+    "notificationsOff": "বন্ধ",
+    "yourData": "আপনার ডেটা",
+    "exportData": "আমার ডেটা এক্সপোর্ট করুন",
+    "exportDataPreparing": "এক্সপোর্ট প্রস্তুত হচ্ছে…",
+    "exportDataSubtitle": "আপনার মালিকানাধীন সবকিছুর একটি কপি শেয়ার করুন"
+  },
+  "language": {
+    "title": "ভাষা",
+    "subtitle": "আপনি আপনার প্রোফাইলে যোগ করা ভাষাগুলিই কেবল এখানে উপলব্ধ।",
+    "noneAvailable": "আপনার প্রোফাইলের কোনো ভাষার জন্য এখনো অ্যাপ অনুবাদ উপলব্ধ নেই।",
+    "addInProfile": "এটি এখানে আনলক করতে আপনার প্রোফাইলে একটি সমর্থিত ভাষা যোগ করুন: ইংরেজি, হিন্দি, মারাঠি, গুজরাটি, তামিল, তেলুগু, কন্নড়, বাংলা, মালয়ালম, পাঞ্জাবি।"
+  }
+}

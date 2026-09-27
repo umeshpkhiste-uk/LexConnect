@@ -1,22 +1,261 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Dimensions, Image, Linking, Modal, Pressable, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import {
   addComment,
+  deleteComment,
   deletePost,
   FeedPost,
+  getPublicAttachmentUrl,
   getPublicImageUrl,
+  incrementPostShare,
   isEdited,
   listComments,
+  PostAttachment,
   PostComment,
+  ReactionKind,
+  subscribeToPostComments,
+  toggleCommentReaction,
+  updateComment,
   updatePost,
 } from "@/features/posts/api";
+import { getMyProfile } from "@/features/profile/api";
 import { OnlineDot } from "@/features/presence/OnlineDot";
 import { ActionSheet, SheetAction } from "@/shared/ui/ActionSheet";
 import { PostVideo } from "@/features/posts/PostVideo";
 import { useTheme } from "@/shared/ui/theme";
 import type { PublicProfile } from "./api";
+
+/** Splits post/comment text on single-token @mentions ("@clivebixby") so
+ * they can be rendered in the accent color, chat-app style. */
+function renderWithMentions(text: string, mentionColor: string) {
+  const parts = text.split(/(@[A-Za-z0-9_]+)/g);
+  return parts.map((part, i) =>
+    part.startsWith("@") ? (
+      <Text key={i} style={{ color: mentionColor, fontWeight: "700" }}>
+        {part}
+      </Text>
+    ) : (
+      <Text key={i}>{part}</Text>
+    )
+  );
+}
+
+/** Small colored tile + filename for one attached file, keyed off extension. */
+function fileKind(name: string, mime: string | null): { icon: keyof typeof Ionicons.glyphMap; color: string } {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  if (mime?.startsWith("image/") || ["png", "jpg", "jpeg", "gif", "webp"].includes(ext)) return { icon: "image-outline", color: "#2563EB" };
+  if (ext === "pdf") return { icon: "document-text-outline", color: "#DC2626" };
+  if (["ppt", "pptx"].includes(ext) || mime?.includes("presentation")) return { icon: "easel-outline", color: "#EA580C" };
+  if (["xls", "xlsx", "csv"].includes(ext) || mime?.includes("spreadsheet")) return { icon: "grid-outline", color: "#16A34A" };
+  if (["doc", "docx"].includes(ext) || mime?.includes("wordprocessing")) return { icon: "document-outline", color: "#2563EB" };
+  return { icon: "document-attach-outline", color: "#64748B" };
+}
+
+function formatFileSize(bytes: number | null): string {
+  if (!bytes) return "";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** Files-attached card: "N files" header + a tappable row per file. */
+function AttachmentsCard({ files }: { files: PostAttachment[] }) {
+  const { colors, spacing, radius, typography } = useTheme();
+  if (!files.length) return null;
+  return (
+    <View style={[styles.filesCard, { backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.sm, marginTop: spacing.sm, gap: spacing.xs }]}>
+      <Text style={[typography.caption, { color: colors.textSecondary }]}>
+        {files.length} file{files.length === 1 ? "" : "s"}
+      </Text>
+      {files.map((f) => {
+        const { icon, color } = fileKind(f.file_name, f.mime_type);
+        return (
+          <Pressable
+            key={f.id}
+            onPress={() => Linking.openURL(getPublicAttachmentUrl(f.file_path))}
+            style={({ pressed }) => [
+              styles.fileRow,
+              { backgroundColor: pressed ? colors.surface : "transparent", borderRadius: radius.sm, padding: spacing.xs },
+            ]}
+          >
+            <View style={[styles.fileIcon, { backgroundColor: color + "1A", borderRadius: radius.sm }]}>
+              <Ionicons name={icon} size={18} color={color} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[typography.label, { color: colors.textPrimary }]} numberOfLines={1}>
+                {f.file_name}
+              </Text>
+              {f.file_size ? <Text style={[typography.caption, { color: colors.textSecondary }]}>{formatFileSize(f.file_size)}</Text> : null}
+            </View>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+const REACTIONS: { kind: ReactionKind; emoji: string; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { kind: "endorse", emoji: "\u{1F44D}", label: "Endorse", icon: "thumbs-up-outline" },
+  { kind: "heart", emoji: "❤️", label: "Love", icon: "heart-outline" },
+  { kind: "eyes", emoji: "\u{1F440}", label: "Noted", icon: "eye-outline" },
+  { kind: "pray", emoji: "\u{1F64F}", label: "Thanks", icon: "hand-right-outline" },
+];
+
+/** Reaction summary + picker, chat-thread style: pills only ever appear once
+ * someone has actually reacted (never a placeholder/empty emoji) — tapping
+ * a pill removes your own reaction from it. A single "React" control adds
+ * the first one: tap for a quick endorse, long-press to choose which. */
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const EMOJI_POPUP_WIDTH = 236;
+
+/** A WhatsApp-style floating emoji tray: long-press a post or comment and
+ * this pops up right above your finger, instead of a button that would sit
+ * there unreacted the rest of the time. */
+function EmojiReactionPopup({
+  visible,
+  anchor,
+  onSelect,
+  onClose,
+}: {
+  visible: boolean;
+  anchor: { x: number; y: number } | null;
+  onSelect: (kind: ReactionKind) => void;
+  onClose: () => void;
+}) {
+  const { colors, radius } = useTheme();
+  if (!anchor) return null;
+  const left = Math.min(Math.max(anchor.x - EMOJI_POPUP_WIDTH / 2, 12), SCREEN_WIDTH - EMOJI_POPUP_WIDTH - 12);
+  const top = Math.max(anchor.y - 72, 12);
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close reactions">
+        <View
+          style={[
+            styles.emojiPopup,
+            { left, top, width: EMOJI_POPUP_WIDTH, backgroundColor: colors.surface, borderRadius: radius.pill, shadowColor: "#0F172A" },
+          ]}
+        >
+          {REACTIONS.map(({ kind, emoji }) => (
+            <Pressable
+              key={kind}
+              onPress={() => {
+                onSelect(kind);
+                onClose();
+              }}
+              hitSlop={6}
+              style={({ pressed }) => [styles.emojiPopupItem, { transform: [{ scale: pressed ? 1.3 : 1 }] }]}
+            >
+              <Text style={{ fontSize: 26 }}>{emoji}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </Pressable>
+    </Modal>
+  );
+}
+
+/** Reaction pill row: only ever shows emojis someone has actually used —
+ * tapping one removes your own reaction from it. To add the first reaction,
+ * long-press the post/comment itself to bring up the emoji tray. */
+function ReactionsRow({
+  counts,
+  mine,
+  onToggle,
+  compact,
+}: {
+  counts: Record<ReactionKind, number>;
+  mine: Record<ReactionKind, boolean>;
+  onToggle: (kind: ReactionKind) => void;
+  /** Smaller reaction pills for a comment row vs. a full post. */
+  compact?: boolean;
+}) {
+  const { colors, radius, typography } = useTheme();
+
+  return (
+    <View style={styles.reactionsRow}>
+      {REACTIONS.map(({ kind, emoji }) => {
+        const count = counts[kind];
+        const active = mine[kind];
+        if (count === 0) return null;
+        return (
+          <Pressable
+            key={kind}
+            onPress={() => onToggle(kind)}
+            style={({ pressed }) => [
+              compact ? styles.reactionPillCompact : styles.reactionPill,
+              {
+                borderRadius: radius.pill,
+                backgroundColor: active ? colors.brand + "26" : colors.surfaceAlt,
+                opacity: pressed ? 0.8 : 1,
+              },
+            ]}
+          >
+            <Text style={{ fontSize: compact ? 11 : 13 }}>{emoji}</Text>
+            <Text style={[compact ? typography.caption : typography.label, { color: active ? colors.brand : colors.textSecondary }]}>{count}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** "2.1K" style compact count. */
+function formatCount(n: number): string {
+  if (n < 1000) return String(n);
+  if (n < 1_000_000) return `${(n / 1000).toFixed(n % 1000 >= 100 ? 1 : 0).replace(/\.0$/, "")}K`;
+  return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+}
+
+/** Flat like/comment/share stat row under a post — a plain icon + count per
+ * stat, no pill backgrounds. Tapping the like stat quick-reacts (endorse);
+ * long-pressing it opens the full emoji tray. */
+function PostStatsRow({
+  reactionsTotal,
+  myReactionActive,
+  commentsCount,
+  shareCount,
+  onLikePress,
+  onLikeLongPress,
+  onCommentPress,
+  onSharePress,
+}: {
+  reactionsTotal: number;
+  myReactionActive: boolean;
+  commentsCount: number;
+  shareCount: number;
+  onLikePress: () => void;
+  onLikeLongPress: (e: { nativeEvent: { pageX: number; pageY: number } }) => void;
+  onCommentPress: () => void;
+  onSharePress: () => void;
+}) {
+  const { colors, typography } = useTheme();
+  const stats: { key: string; icon: keyof typeof Ionicons.glyphMap; count: number; active?: boolean; onPress: () => void; onLongPress?: (e: { nativeEvent: { pageX: number; pageY: number } }) => void; a11y: string }[] = [
+    { key: "like", icon: myReactionActive ? "thumbs-up" : "thumbs-up-outline", count: reactionsTotal, active: myReactionActive, onPress: onLikePress, onLongPress: onLikeLongPress, a11y: "React" },
+    { key: "comment", icon: "chatbubble-outline", count: commentsCount, onPress: onCommentPress, a11y: "Comments" },
+    { key: "share", icon: "arrow-redo-outline", count: shareCount, onPress: onSharePress, a11y: "Share" },
+  ];
+  return (
+    <View style={styles.statsRow}>
+      {stats.map((s) => (
+        <Pressable
+          key={s.key}
+          onPress={s.onPress}
+          onLongPress={s.onLongPress}
+          hitSlop={6}
+          accessibilityLabel={s.a11y}
+          style={({ pressed }) => [styles.statItem, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          <Ionicons name={s.icon} size={18} color={s.active ? colors.brand : colors.textSecondary} />
+          {s.count > 0 ? (
+            <Text style={[typography.label, { color: s.active ? colors.brand : colors.textSecondary }]}>{formatCount(s.count)}</Text>
+          ) : null}
+        </Pressable>
+      ))}
+    </View>
+  );
+}
 
 export function timeAgo(iso: string): string {
   const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -80,7 +319,11 @@ export function PostCard({
   isOwn,
   onToggleEndorse,
   onToggleHeart,
+  onToggleEyes,
+  onTogglePray,
   onCommentAdded,
+  onCommentRemoved,
+  onShared,
   onEdited,
   onDeleted,
 }: {
@@ -89,7 +332,11 @@ export function PostCard({
   isOwn: boolean;
   onToggleEndorse: () => void;
   onToggleHeart: () => void;
+  onToggleEyes: () => void;
+  onTogglePray: () => void;
   onCommentAdded: () => void;
+  onCommentRemoved: () => void;
+  onShared: () => void;
   onEdited: (update: { content: string; updated_at: string }) => void;
   onDeleted: () => void;
 }) {
@@ -98,7 +345,23 @@ export function PostCard({
   const name = author?.full_name ?? "Advocate";
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [popupAnchor, setPopupAnchor] = useState<{ x: number; y: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const reactWith = (kind: ReactionKind) =>
+    kind === "endorse" ? onToggleEndorse() : kind === "heart" ? onToggleHeart() : kind === "eyes" ? onToggleEyes() : onTogglePray();
+
+  const handleShare = async () => {
+    try {
+      const result = await Share.share({ message: `${withAdvPrefix(name)} on LexConnect:\n\n${post.content}` });
+      if (result.action === Share.sharedAction) {
+        onShared();
+        incrementPostShare(post.id).catch(() => {});
+      }
+    } catch {
+      // User cancelled or the share sheet failed to open — nothing to do.
+    }
+  };
+
   const [draft, setDraft] = useState(post.content);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -215,7 +478,11 @@ export function PostCard({
           </View>
         </View>
       ) : (
-        <Text style={[typography.body, { color: colors.textPrimary, marginTop: spacing.sm, lineHeight: 22 }]}>{post.content}</Text>
+        <Pressable onLongPress={(e) => setPopupAnchor({ x: e.nativeEvent.pageX, y: e.nativeEvent.pageY })} delayLongPress={1000}>
+          <Text style={[typography.body, { color: colors.textPrimary, marginTop: spacing.sm, lineHeight: 22 }]}>
+            {renderWithMentions(post.content, colors.brand)}
+          </Text>
+        </Pressable>
       )}
       {!isEditing && isEdited(post) ? (
         <View style={[styles.editedTag, { marginTop: 4 }]}>
@@ -236,101 +503,122 @@ export function PostCard({
         </View>
       ) : null}
 
-      <View style={[styles.actions, { borderTopColor: colors.border, marginTop: spacing.md, paddingTop: spacing.xs }]}>
-        <ActionButton
-          icon={post.liked_by_me ? "thumbs-up" : "thumbs-up-outline"}
-          label={post.liked_by_me ? "Endorsed" : "Endorse"}
-          count={post.likes_count}
-          activeColor={colors.accent}
-          active={post.liked_by_me}
-          onPress={onToggleEndorse}
-        />
-        <ActionButton
-          icon={commentsOpen ? "chatbubble" : "chatbubble-outline"}
-          label="Comment"
-          count={post.comments_count}
-          activeColor={colors.brand}
-          active={commentsOpen}
-          onPress={() => setCommentsOpen((open) => !open)}
-        />
-        <ActionButton
-          icon={post.hearted_by_me ? "heart" : "heart-outline"}
-          count={post.hearts_count}
-          activeColor={colors.danger}
-          active={post.hearted_by_me}
-          onPress={onToggleHeart}
-          accessibilityLabel={post.hearted_by_me ? "Remove heart" : "Heart"}
+      <AttachmentsCard files={post.attachments} />
+
+      <View style={[styles.actions, { borderTopColor: colors.border, marginTop: spacing.md, paddingTop: spacing.sm }]}>
+        <PostStatsRow
+          reactionsTotal={post.likes_count + post.hearts_count + post.eyes_count + post.pray_count}
+          myReactionActive={post.liked_by_me || post.hearted_by_me || post.eyed_by_me || post.prayed_by_me}
+          commentsCount={post.comments_count}
+          shareCount={post.share_count}
+          onLikePress={() => reactWith("endorse")}
+          onLikeLongPress={(e) => setPopupAnchor({ x: e.nativeEvent.pageX, y: e.nativeEvent.pageY })}
+          onCommentPress={() => setCommentsOpen((open) => !open)}
+          onSharePress={handleShare}
         />
       </View>
 
-      {commentsOpen ? <InlineComments postId={post.id} onAdded={onCommentAdded} /> : null}
+      {commentsOpen ? <InlineComments postId={post.id} onAdded={onCommentAdded} onRemoved={onCommentRemoved} /> : null}
 
       <ActionSheet visible={menuOpen} title={isOwn ? "Your post" : name} actions={menuActions} onClose={() => setMenuOpen(false)} />
+      <EmojiReactionPopup visible={!!popupAnchor} anchor={popupAnchor} onSelect={reactWith} onClose={() => setPopupAnchor(null)} />
     </View>
   );
 }
 
-function ActionButton({
-  icon,
-  label,
-  count,
-  onPress,
-  active,
-  activeColor,
-  accessibilityLabel,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label?: string;
-  count: number;
-  onPress: () => void;
-  active?: boolean;
-  activeColor: string;
-  accessibilityLabel?: string;
-}) {
-  const { colors, radius, typography } = useTheme();
-  const color = active ? activeColor : colors.textSecondary;
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityState={{ selected: !!active }}
-      style={({ pressed }) => [
-        styles.actionButton,
-        { borderRadius: radius.sm, backgroundColor: pressed ? colors.surfaceAlt : "transparent" },
-      ]}
-    >
-      <Ionicons name={icon} size={18} color={color} />
-      {label ? <Text style={[typography.label, { color }]}>{label}</Text> : null}
-      {count > 0 ? <Text style={[typography.label, { color: colors.textSecondary }]}>{count}</Text> : null}
-    </Pressable>
-  );
+/** "5 replies from Dom, Alice, Matt, and others" — Slack-thread style. */
+function repliesSummary(names: string[]): string {
+  const unique = [...new Set(names)];
+  const shown = unique.slice(0, 2);
+  const rest = unique.length - shown.length;
+  const who = rest > 0 ? `${shown.join(", ")}, and others` : shown.length === 2 ? shown.join(" and ") : shown[0];
+  return `${names.length} ${names.length === 1 ? "reply" : "replies"} from ${who}`;
 }
 
-/** Comment thread + reply box, expanded in place under a post. */
-function InlineComments({ postId, onAdded }: { postId: string; onAdded: () => void }) {
+/** Comment thread + reply box, expanded in place under a post. Starts
+ * collapsed to an avatar stack + summary (chat-thread style) once there are
+ * replies, streams in new ones live, and shows who's currently typing. */
+function InlineComments({ postId, onAdded, onRemoved }: { postId: string; onAdded: () => void; onRemoved: () => void }) {
   const { colors, spacing, radius, typography } = useTheme();
   const [comments, setComments] = useState<PostComment[] | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [typingNames, setTypingNames] = useState<Map<string, string>>(new Map());
+  const meRef = useRef<{ id: string; name: string } | null>(null);
+  const [myId, setMyId] = useState<string | null>(null);
+  const channelRef = useRef<ReturnType<typeof subscribeToPostComments> | null>(null);
+  const typingStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const othersTypingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  const refresh = () => listComments(postId).then(setComments).catch(() => setComments((prev) => prev ?? []));
 
   useEffect(() => {
     let isMounted = true;
-    listComments(postId)
-      .then((data) => isMounted && setComments(data))
-      .catch(() => isMounted && setComments([]));
+    getMyProfile()
+      .then((me) => {
+        if (!isMounted) return;
+        meRef.current = { id: me.id, name: me.full_name };
+        setMyId(me.id);
+      })
+      .catch(() => {});
+    refresh();
+
+    const channel = subscribeToPostComments(postId, {
+      onChange: refresh,
+      onTyping: (userId, name, isTyping) => {
+        if (userId === meRef.current?.id) return;
+        setTypingNames((prev) => {
+          const next = new Map(prev);
+          if (isTyping) next.set(userId, name);
+          else next.delete(userId);
+          return next;
+        });
+        const timers = othersTypingTimers.current;
+        clearTimeout(timers.get(userId));
+        if (isTyping) {
+          timers.set(
+            userId,
+            setTimeout(() => setTypingNames((prev) => { const next = new Map(prev); next.delete(userId); return next; }), 5000)
+          );
+        }
+      },
+    });
+    channelRef.current = channel;
+    const timers = othersTypingTimers.current;
+
     return () => {
       isMounted = false;
+      if (typingStopTimer.current) clearTimeout(typingStopTimer.current);
+      timers.forEach(clearTimeout);
+      channel.unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId]);
+
+  const onDraftChange = (text: string) => {
+    setDraft(text);
+    const me = meRef.current;
+    if (!me || !channelRef.current) return;
+    channelRef.current.sendTyping(me.id, me.name, !!text.trim());
+    if (typingStopTimer.current) clearTimeout(typingStopTimer.current);
+    if (text.trim()) {
+      typingStopTimer.current = setTimeout(() => channelRef.current?.sendTyping(me.id, me.name, false), 4000);
+    }
+  };
 
   const send = async () => {
     const text = draft.trim();
     if (!text || isSending) return;
     setIsSending(true);
+    const me = meRef.current;
+    if (typingStopTimer.current) clearTimeout(typingStopTimer.current);
+    if (me) channelRef.current?.sendTyping(me.id, me.name, false);
     try {
       await addComment(postId, text);
       setDraft("");
-      setComments(await listComments(postId));
+      setExpanded(true);
+      await refresh();
       onAdded();
     } catch (err) {
       Alert.alert("Couldn't post comment", err instanceof Error ? err.message : "Something went wrong");
@@ -339,34 +627,59 @@ function InlineComments({ postId, onAdded }: { postId: string; onAdded: () => vo
     }
   };
 
+  const typingLine = [...typingNames.values()];
+
   return (
     <View style={[styles.comments, { borderTopColor: colors.border, marginTop: spacing.xs, paddingTop: spacing.sm, gap: spacing.sm }]}>
       {comments === null ? (
         <ActivityIndicator color={colors.brand} />
       ) : comments.length === 0 ? (
-        <Text style={[typography.caption, { color: colors.textSecondary }]}>No comments yet. Start the discussion.</Text>
-      ) : (
-        comments.map((c) => {
-          const commenter = c.author?.full_name ?? "Advocate";
-          return (
-            <View key={c.id} style={{ flexDirection: "row", gap: spacing.sm }}>
-              <Avatar name={commenter} photoUrl={c.author?.profile_photo_url} size={30} userId={c.author_id} />
-              <View style={[styles.commentBubble, { backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.sm }]}>
-                <Text style={[typography.label, { color: colors.brand }]}>
-                  {withAdvPrefix(commenter)}
-                  <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: "400" }]}> · {timeAgo(c.created_at)}</Text>
-                </Text>
-                <Text style={[typography.body, { color: colors.textPrimary, marginTop: 2 }]}>{c.content}</Text>
+        <Text style={[typography.caption, { color: colors.textSecondary }]}>No replies yet. Start the discussion.</Text>
+      ) : !expanded ? (
+        <Pressable onPress={() => setExpanded(true)} style={styles.threadSummary}>
+          <View style={styles.avatarStack}>
+            {comments.slice(-4).map((c, i) => (
+              <View key={c.id} style={[styles.avatarStackItem, { borderColor: colors.surface, zIndex: i }]}>
+                <Avatar name={c.author?.full_name ?? "Advocate"} photoUrl={c.author?.profile_photo_url} size={24} />
               </View>
-            </View>
-          );
-        })
+            ))}
+          </View>
+          <Text style={[typography.label, { color: colors.brand }]}>{repliesSummary(comments.map((c) => c.author?.full_name ?? "Advocate"))}</Text>
+        </Pressable>
+      ) : (
+        comments.map((c) => (
+          <CommentRow
+            key={c.id}
+            comment={c}
+            isOwn={c.author_id === myId}
+            onReaction={(kind) => {
+              const currentlyOn = c[({ endorse: "liked_by_me", heart: "hearted_by_me", eyes: "eyed_by_me", pray: "prayed_by_me" } as const)[kind]];
+              const countKey = ({ endorse: "likes_count", heart: "hearts_count", eyes: "eyes_count", pray: "pray_count" } as const)[kind];
+              const flagKey = ({ endorse: "liked_by_me", heart: "hearted_by_me", eyes: "eyed_by_me", pray: "prayed_by_me" } as const)[kind];
+              setComments((prev) =>
+                prev?.map((x) => (x.id === c.id ? { ...x, [countKey]: x[countKey] + (currentlyOn ? -1 : 1), [flagKey]: !currentlyOn } : x)) ?? prev
+              );
+              toggleCommentReaction(c.id, kind, currentlyOn).catch(refresh);
+            }}
+            onEdited={(update) => setComments((prev) => prev?.map((x) => (x.id === c.id ? { ...x, ...update } : x)) ?? prev)}
+            onDeleted={() => {
+              setComments((prev) => prev?.filter((x) => x.id !== c.id) ?? prev);
+              onRemoved();
+            }}
+          />
+        ))
       )}
+
+      {typingLine.length ? (
+        <Text style={[typography.caption, { color: colors.textSecondary, fontStyle: "italic" }]}>
+          {typingLine.join(", ")} {typingLine.length === 1 ? "is" : "are"} typing…
+        </Text>
+      ) : null}
 
       <View style={[styles.replyRow, { borderColor: colors.border, borderRadius: radius.pill, backgroundColor: colors.background }]}>
         <TextInput
           value={draft}
-          onChangeText={setDraft}
+          onChangeText={onDraftChange}
           placeholder="Write a comment…"
           placeholderTextColor={colors.textSecondary}
           style={[typography.body, { flex: 1, color: colors.textPrimary, paddingVertical: 8 }]}
@@ -381,6 +694,146 @@ function InlineComments({ postId, onAdded }: { postId: string; onAdded: () => vo
           )}
         </Pressable>
       </View>
+    </View>
+  );
+}
+
+/** One reply bubble: author, editable content, its own reaction row, and
+ * Edit/Delete for the commenter (Report for anyone else) — an improvised
+ * take on the familiar social-app comment row, not a copy of any one app's. */
+function CommentRow({
+  comment,
+  isOwn,
+  onReaction,
+  onEdited,
+  onDeleted,
+}: {
+  comment: PostComment;
+  isOwn: boolean;
+  onReaction: (kind: ReactionKind) => void;
+  onEdited: (update: { content: string; updated_at: string }) => void;
+  onDeleted: () => void;
+}) {
+  const { colors, spacing, radius, typography } = useTheme();
+  const commenter = comment.author?.full_name ?? "Advocate";
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [popupAnchor, setPopupAnchor] = useState<{ x: number; y: number } | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState(comment.content);
+  const [isSaving, setIsSaving] = useState(false);
+  const mine: Record<ReactionKind, boolean> = {
+    endorse: comment.liked_by_me,
+    heart: comment.hearted_by_me,
+    eyes: comment.eyed_by_me,
+    pray: comment.prayed_by_me,
+  };
+
+  const saveEdit = async () => {
+    const text = draft.trim();
+    if (!text || isSaving) return;
+    if (text === comment.content) {
+      setIsEditing(false);
+      return;
+    }
+    setIsSaving(true);
+    try {
+      onEdited(await updateComment(comment.id, text));
+      setIsEditing(false);
+    } catch (err) {
+      Alert.alert("Couldn't update comment", err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const confirmDelete = () =>
+    Alert.alert("Delete this comment?", "This can't be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deleteComment(comment.id);
+            onDeleted();
+          } catch (err) {
+            Alert.alert("Couldn't delete comment", err instanceof Error ? err.message : "Something went wrong");
+          }
+        },
+      },
+    ]);
+
+  const menuActions: SheetAction[] = isOwn
+    ? [
+        { label: "Edit comment", icon: "create-outline", onPress: () => { setDraft(comment.content); setIsEditing(true); } },
+        { label: "Delete comment", icon: "trash-outline", onPress: confirmDelete },
+      ]
+    : [
+        {
+          label: "Report comment",
+          icon: "flag-outline",
+          onPress: () => router.push(`/(app)/reports/new?targetType=comment&targetId=${comment.id}&label=comment`),
+        },
+      ];
+
+  return (
+    <View style={{ flexDirection: "row", gap: spacing.sm }}>
+      <Avatar name={commenter} photoUrl={comment.author?.profile_photo_url} size={30} userId={comment.author_id} />
+      <View style={{ flex: 1 }}>
+        <View style={[styles.commentBubble, { backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.sm }]}>
+          <View style={styles.commentHeaderRow}>
+            <Text style={[typography.label, { color: colors.brand, flex: 1 }]} numberOfLines={1}>
+              {withAdvPrefix(commenter)}
+            </Text>
+            <Pressable onPress={() => setMenuOpen(true)} hitSlop={10} accessibilityLabel="Comment options">
+              <Ionicons name="ellipsis-horizontal" size={16} color={colors.textSecondary} />
+            </Pressable>
+          </View>
+          {isEditing ? (
+            <View style={{ gap: spacing.xs }}>
+              <TextInput
+                value={draft}
+                onChangeText={setDraft}
+                multiline
+                autoFocus
+                maxLength={1000}
+                style={[typography.body, { color: colors.textPrimary, paddingVertical: 2 }]}
+              />
+              <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: spacing.md }}>
+                <Pressable onPress={() => setIsEditing(false)} accessibilityLabel="Cancel editing">
+                  <Text style={[typography.label, { color: colors.textSecondary }]}>Cancel</Text>
+                </Pressable>
+                <Pressable onPress={saveEdit} disabled={!draft.trim() || isSaving} accessibilityLabel="Save comment">
+                  {isSaving ? <ActivityIndicator color={colors.brand} size="small" /> : <Text style={[typography.label, { color: colors.brand }]}>Save</Text>}
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <Pressable
+              onLongPress={(e) => setPopupAnchor({ x: e.nativeEvent.pageX, y: e.nativeEvent.pageY })}
+              delayLongPress={1000}
+            >
+              <Text style={[typography.body, { color: colors.textPrimary, marginTop: 2 }]}>{renderWithMentions(comment.content, colors.brand)}</Text>
+            </Pressable>
+          )}
+        </View>
+        <View style={[styles.commentFooterRow, { marginTop: 2 }]}>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>
+            {timeAgo(comment.created_at)}
+            {isEdited(comment) ? " · Edited" : ""}
+          </Text>
+          {!isEditing ? (
+            <ReactionsRow
+              counts={{ endorse: comment.likes_count, heart: comment.hearts_count, eyes: comment.eyes_count, pray: comment.pray_count }}
+              mine={mine}
+              onToggle={onReaction}
+              compact
+            />
+          ) : null}
+        </View>
+      </View>
+      <ActionSheet visible={menuOpen} title={isOwn ? "Your comment" : commenter} actions={menuActions} onClose={() => setMenuOpen(false)} />
+      <EmojiReactionPopup visible={!!popupAnchor} anchor={popupAnchor} onSelect={onReaction} onClose={() => setPopupAnchor(null)} />
     </View>
   );
 }
@@ -594,8 +1047,31 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     padding: 1,
   },
-  actions: { flexDirection: "row", justifyContent: "space-between", borderTopWidth: StyleSheet.hairlineWidth },
+  actions: { gap: 8, borderTopWidth: StyleSheet.hairlineWidth },
   actionButton: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 10 },
+  reactionsRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
+  reactionPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 9, paddingVertical: 5 },
+  emojiPopup: {
+    position: "absolute",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  emojiPopupItem: { paddingHorizontal: 6, paddingVertical: 4 },
+  reactionPillCompact: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 6, paddingVertical: 3 },
+  statsRow: { flexDirection: "row", gap: 22 },
+  statItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  commentHeaderRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  commentFooterRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingLeft: 4 },
+  filesCard: {},
+  fileRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  fileIcon: { width: 30, height: 30, alignItems: "center", justifyContent: "center" },
   comments: { borderTopWidth: StyleSheet.hairlineWidth },
   editRow: { flexDirection: "row", alignItems: "flex-end", borderWidth: 1.5, paddingLeft: 12, paddingRight: 8, paddingVertical: 4, gap: 8 },
   editButtons: { flexDirection: "row", alignItems: "center", gap: 8, paddingBottom: 6 },
@@ -603,6 +1079,9 @@ const styles = StyleSheet.create({
   editedTag: { flexDirection: "row", alignItems: "center", gap: 4 },
   commentBubble: { flex: 1 },
   replyRow: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14 },
+  avatarStack: { flexDirection: "row" },
+  avatarStackItem: { marginLeft: -10, borderWidth: 2 },
+  threadSummary: { flexDirection: "row", alignItems: "center", gap: 8 },
   colleague: { justifyContent: "space-between" },
   tags: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 4 },
   tag: { paddingHorizontal: 10, paddingVertical: 4, maxWidth: 150 },

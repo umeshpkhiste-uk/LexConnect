@@ -1,11 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useState } from "react";
 import { Alert, Image, Linking, Pressable, StyleSheet, Text, View } from "react-native";
-import { createPost, MAX_VIDEO_BYTES } from "@/features/posts/api";
+import { createPost, MAX_ATTACHMENT_BYTES, MAX_VIDEO_BYTES, PickedFile } from "@/features/posts/api";
 import { Button } from "@/shared/ui/Button";
 import { ScreenContainer } from "@/shared/ui/ScreenContainer";
 import { TextField } from "@/shared/ui/TextField";
@@ -16,8 +17,25 @@ export default function NewPostScreen() {
   const [content, setContent] = useState("");
   const [image, setImage] = useState<{ uri: string; mimeType?: string } | null>(null);
   const [video, setVideo] = useState<{ uri: string; mimeType?: string; size?: number } | null>(null);
+  const [files, setFiles] = useState<PickedFile[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // A post's files are separate from its one photo/video — e.g. a slide
+  // deck or a spreadsheet shared alongside an update.
+  const pickFiles = async () => {
+    const result = await DocumentPicker.getDocumentAsync({ type: "*/*", multiple: true, copyToCacheDirectory: true });
+    if (result.canceled) return;
+    const tooLarge = result.assets.find((a) => a.size && a.size > MAX_ATTACHMENT_BYTES);
+    if (tooLarge) {
+      Alert.alert("File too large", `${tooLarge.name} is over the 25 MB attachment limit.`);
+      return;
+    }
+    setFiles((prev) => [...prev, ...result.assets.map((a) => ({ uri: a.uri, name: a.name, mimeType: a.mimeType, size: a.size }))]);
+    setError(null);
+  };
+
+  const removeFile = (uri: string) => setFiles((prev) => prev.filter((f) => f.uri !== uri));
 
   // Gallery asks for photo access; camera asks for camera access.
   const pickImage = async (source: "library" | "camera") => {
@@ -79,7 +97,7 @@ export default function NewPostScreen() {
     setError(null);
     setIsSubmitting(true);
     try {
-      await createPost({ content, imageUri: image?.uri, imageMimeType: image?.mimeType, video });
+      await createPost({ content, imageUri: image?.uri, imageMimeType: image?.mimeType, video, files });
       router.back();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -166,6 +184,37 @@ export default function NewPostScreen() {
         </Text>
       ) : null}
 
+      <Pressable
+        onPress={pickFiles}
+        accessibilityLabel="Attach files"
+        style={({ pressed }) => [
+          styles.attachRow,
+          { borderColor: colors.border, borderRadius: radius.sm, backgroundColor: pressed ? colors.surfaceAlt : colors.surface, marginBottom: spacing.md },
+        ]}
+      >
+        <Ionicons name="attach-outline" size={20} color={colors.brand} />
+        <Text style={[typography.label, { color: colors.textPrimary }]}>Attach files (PDF, slides, spreadsheets…)</Text>
+      </Pressable>
+
+      {files.length ? (
+        <View style={{ gap: spacing.xs, marginBottom: spacing.md }}>
+          {files.map((f) => (
+            <View
+              key={f.uri}
+              style={[styles.fileRow, { borderColor: colors.border, borderRadius: radius.sm, backgroundColor: colors.surface }]}
+            >
+              <Ionicons name="document-attach-outline" size={18} color={colors.brand} />
+              <Text style={[typography.label, { color: colors.textPrimary, flex: 1 }]} numberOfLines={1}>
+                {f.name}
+              </Text>
+              <Pressable onPress={() => removeFile(f.uri)} hitSlop={8} accessibilityLabel={`Remove ${f.name}`}>
+                <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       {error ? <Text style={{ color: colors.danger, marginBottom: spacing.md }}>{error}</Text> : null}
 
       <Button label={isSubmitting && video ? "Uploading video…" : "Post"} onPress={handlePost} loading={isSubmitting} pill />
@@ -186,4 +235,6 @@ const styles = StyleSheet.create({
   preview: { overflow: "hidden", borderWidth: StyleSheet.hairlineWidth * 2 },
   previewActions: { flexDirection: "row", justifyContent: "space-around" },
   previewAction: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4 },
+  attachRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 12, paddingHorizontal: 14, borderWidth: 1, borderStyle: "dashed" },
+  fileRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 8, paddingHorizontal: 10, borderWidth: StyleSheet.hairlineWidth },
 });

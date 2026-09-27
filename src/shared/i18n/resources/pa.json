@@ -1,0 +1,44 @@
+{
+  "tabs": {
+    "home": "ਹੋਮ",
+    "cases": "ਕੇਸ",
+    "calendar": "ਕੈਲੰਡਰ",
+    "network": "ਨੈੱਟਵਰਕ",
+    "profile": "ਪ੍ਰੋਫਾਈਲ"
+  },
+  "settings": {
+    "privacy": "ਗੋਪਨੀਯਤਾ",
+    "profileVisibility": "ਪ੍ਰੋਫਾਈਲ ਦਿੱਖ",
+    "visibilityPublic": "ਜਨਤਕ",
+    "visibilityConnections": "ਕਨੈਕਸ਼ਨ",
+    "visibilityPrivate": "ਨਿੱਜੀ",
+    "visibilityHelpPublic": "ਕੋਈ ਵੀ ਵਕੀਲ ਨੈੱਟਵਰਕ ਖੋਜ ਵਿੱਚ ਤੁਹਾਨੂੰ ਲੱਭ ਸਕਦਾ ਹੈ।",
+    "visibilityHelpConnections": "ਤੁਸੀਂ ਖੋਜ ਵਿੱਚ ਦਿਖਾਈ ਦਿੰਦੇ ਹੋ, ਪਰ ਸਿਰਫ਼ ਕਨੈਕਸ਼ਨ ਹੀ ਤੁਹਾਡੀ ਪੂਰੀ ਪ੍ਰੋਫਾਈਲ ਦੇਖ ਸਕਦੇ ਹਨ।",
+    "visibilityHelpPrivate": "ਤੁਸੀਂ ਨੈੱਟਵਰਕ ਖੋਜ ਤੋਂ ਲੁਕੇ ਹੋਏ ਹੋ।",
+    "preferences": "ਤਰਜੀਹਾਂ",
+    "theme": "ਥੀਮ",
+    "language": "ਭਾਸ਼ਾ",
+    "manageProfile": "ਪ੍ਰੋਫਾਈਲ ਦਾ ਪ੍ਰਬੰਧਨ ਕਰੋ",
+    "security": "ਸੁਰੱਖਿਆ",
+    "appLock": "ਐਪ ਲਾਕ (ਪਿੰਨ ਜਾਂ ਪੈਟਰਨ)",
+    "appLockOnPin": "ਚਾਲੂ · ਪਿੰਨ",
+    "appLockOnPattern": "ਚਾਲੂ · ਪੈਟਰਨ",
+    "appLockOff": "ਬੰਦ",
+    "account": "ਖਾਤਾ",
+    "loginEmail": "ਲੌਗਇਨ ਈਮੇਲ",
+    "changePassword": "ਪਾਸਵਰਡ ਬਦਲੋ",
+    "notifications": "ਸੂਚਨਾਵਾਂ",
+    "notificationsOn": "ਚਾਲੂ",
+    "notificationsOff": "ਬੰਦ",
+    "yourData": "ਤੁਹਾਡਾ ਡਾਟਾ",
+    "exportData": "ਮੇਰਾ ਡਾਟਾ ਐਕਸਪੋਰਟ ਕਰੋ",
+    "exportDataPreparing": "ਐਕਸਪੋਰਟ ਤਿਆਰ ਹੋ ਰਿਹਾ ਹੈ…",
+    "exportDataSubtitle": "ਆਪਣੀ ਮਲਕੀਅਤ ਵਾਲੀ ਹਰ ਚੀਜ਼ ਦੀ ਇੱਕ ਕਾਪੀ ਸਾਂਝੀ ਕਰੋ"
+  },
+  "language": {
+    "title": "ਭਾਸ਼ਾ",
+    "subtitle": "ਸਿਰਫ਼ ਉਹ ਭਾਸ਼ਾਵਾਂ ਹੀ ਇੱਥੇ ਉਪਲਬਧ ਹਨ ਜੋ ਤੁਸੀਂ ਆਪਣੀ ਪ੍ਰੋਫਾਈਲ ਵਿੱਚ ਸ਼ਾਮਲ ਕੀਤੀਆਂ ਹਨ।",
+    "noneAvailable": "ਤੁਹਾਡੀ ਪ੍ਰੋਫਾਈਲ ਦੀ ਕਿਸੇ ਵੀ ਭਾਸ਼ਾ ਲਈ ਅਜੇ ਐਪ ਅਨੁਵਾਦ ਉਪਲਬਧ ਨਹੀਂ ਹੈ।",
+    "addInProfile": "ਇਸਨੂੰ ਇੱਥੇ ਅਨਲੌਕ ਕਰਨ ਲਈ ਆਪਣੀ ਪ੍ਰੋਫਾਈਲ ਵਿੱਚ ਇੱਕ ਸਮਰਥਿਤ ਭਾਸ਼ਾ ਸ਼ਾਮਲ ਕਰੋ: ਅੰਗਰੇਜ਼ੀ, ਹਿੰਦੀ, ਮਰਾਠੀ, ਗੁਜਰਾਤੀ, ਤਮਿਲ, ਤੇਲਗੂ, ਕੰਨੜ, ਬੰਗਾਲੀ, ਮਲਿਆਲਮ, ਪੰਜਾਬੀ।"
+  }
+}

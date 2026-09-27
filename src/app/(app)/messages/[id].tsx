@@ -184,7 +184,7 @@ export default function ChatScreen() {
       setEditing(null);
       setDraft("");
       upsert({ ...target, content: text, edited_at: new Date().toISOString() });
-      editMessage(target.id, text).catch((err) => {
+      editMessage(id, target.id, text).catch((err) => {
         upsert(target);
         Alert.alert("Couldn't edit message", err instanceof Error ? err.message : "Something went wrong");
       });

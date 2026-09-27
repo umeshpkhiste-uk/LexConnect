@@ -1,0 +1,44 @@
+{
+  "tabs": {
+    "home": "હોમ",
+    "cases": "કેસ",
+    "calendar": "કેલેન્ડર",
+    "network": "નેટવર્ક",
+    "profile": "પ્રોફાઇલ"
+  },
+  "settings": {
+    "privacy": "ગોપનીયતા",
+    "profileVisibility": "પ્રોફાઇલ દૃશ્યતા",
+    "visibilityPublic": "જાહેર",
+    "visibilityConnections": "જોડાણો",
+    "visibilityPrivate": "ખાનગી",
+    "visibilityHelpPublic": "કોઈપણ વકીલ નેટવર્ક શોધમાં તમને શોધી શકે છે.",
+    "visibilityHelpConnections": "તમે શોધમાં દેખાવ છો, પરંતુ ફક્ત જોડાણો જ તમારી સંપૂર્ણ પ્રોફાઇલ જુએ છે.",
+    "visibilityHelpPrivate": "તમે નેટવર્ક શોધથી છુપાયેલા છો.",
+    "preferences": "પસંદગીઓ",
+    "theme": "થીમ",
+    "language": "ભાષા",
+    "manageProfile": "પ્રોફાઇલ સંચાલિત કરો",
+    "security": "સુરક્ષા",
+    "appLock": "એપ લોક (પિન અથવા પેટર્ન)",
+    "appLockOnPin": "ચાલુ · પિન",
+    "appLockOnPattern": "ચાલુ · પેટર્ન",
+    "appLockOff": "બંધ",
+    "account": "ખાતું",
+    "loginEmail": "લોગિન ઈમેલ",
+    "changePassword": "પાસવર્ડ બદલો",
+    "notifications": "સૂચનાઓ",
+    "notificationsOn": "ચાલુ",
+    "notificationsOff": "બંધ",
+    "yourData": "તમારો ડેટા",
+    "exportData": "મારો ડેટા નિકાસ કરો",
+    "exportDataPreparing": "નિકાસ તૈયાર થઈ રહી છે…",
+    "exportDataSubtitle": "તમારી માલિકીની દરેક વસ્તુની નકલ શેર કરો"
+  },
+  "language": {
+    "title": "ભાષા",
+    "subtitle": "તમે તમારી પ્રોફાઇલમાં ઉમેરેલી ભાષાઓ જ અહીં ઉપલબ્ધ છે.",
+    "noneAvailable": "તમારી પ્રોફાઇલની કોઈપણ ભાષા માટે હજુ એપ અનુવાદ ઉપલબ્ધ નથી.",
+    "addInProfile": "તેને અહીં અનલૉક કરવા માટે તમારી પ્રોફાઇલમાં સમર્થિત ભાષા ઉમેરો: અંગ્રેજી, હિન્દી, મરાઠી, ગુજરાતી, તમિલ, તેલુગુ, કન્નડ, બંગાળી, મલયાલમ, પંજાબી."
+  }
+}
