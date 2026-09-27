@@ -67,6 +67,18 @@ export async function getNetworkStats(advocateId: string): Promise<NetworkStats>
   return data as NetworkStats;
 }
 
+/** Follower counts for several advocates at once — for the compact row view
+ * on the "Find colleagues" list, so it doesn't fire one request per card. */
+export async function getFollowerCounts(advocateIds: string[]): Promise<Record<string, number>> {
+  if (advocateIds.length === 0) return {};
+  const { data, error } = await supabase
+    .from("advocate_network_stats")
+    .select("advocate_id, followers_count")
+    .in("advocate_id", advocateIds);
+  if (error) throw new Error(error.message);
+  return Object.fromEntries((data as { advocate_id: string; followers_count: number }[]).map((r) => [r.advocate_id, r.followers_count]));
+}
+
 export async function isFollowing(targetId: string): Promise<boolean> {
   const me = await currentUserId();
   const { data, error } = await supabase

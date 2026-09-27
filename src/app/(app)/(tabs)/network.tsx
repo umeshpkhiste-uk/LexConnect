@@ -4,7 +4,9 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Linking,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -18,6 +20,7 @@ import { ConversationSummary, getOrCreateConversation, listConversations, subscr
 import { ConversationRow } from "@/features/messaging/ConversationRow";
 import {
   ConnectionRow,
+  getFollowerCounts,
   getMutualConnectionCounts,
   listMyConnections,
   listSuggestedAdvocates,
@@ -26,10 +29,11 @@ import {
   searchAdvocates,
   sendConnectionRequest,
 } from "@/features/network/api";
-import { Avatar, ColleagueCard, ConnectStatus, PostCard, withAdvPrefix } from "@/features/network/NetworkCards";
+import { Avatar, ColleagueCard, ConnectStatus, mutualLabel, PortraitAvatar, PostCard, withAdvPrefix } from "@/features/network/NetworkCards";
 import { FeedPost, listFeed, toggleReaction } from "@/features/posts/api";
 import { AdvocateProfile, getMyProfile } from "@/features/profile/api";
 import { SegmentedControl } from "@/shared/ui/SegmentedControl";
+import { useSwipeTabs } from "@/shared/hooks/useSwipeTabs";
 import { HomeButton } from "@/shared/ui/HomeButton";
 import { useTheme } from "@/shared/ui/theme";
 
@@ -63,6 +67,8 @@ export default function NetworkScreen() {
   const [searchResults, setSearchResults] = useState<PublicProfile[] | null>(null);
   const [chip, setChip] = useState<string | null>(null);
   const [mutualCounts, setMutualCounts] = useState<Record<string, number>>({});
+  const [followerCounts, setFollowerCounts] = useState<Record<string, number>>({});
+  const [discoverView, setDiscoverView] = useState<"grid" | "list">("grid");
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(
@@ -78,8 +84,12 @@ export default function NetworkScreen() {
         if (posts.status === "fulfilled") setFeed(posts.value);
         if (people.status === "fulfilled") {
           setSuggested(people.value);
-          getMutualConnectionCounts(people.value.map((p) => p.id))
+          const ids = people.value.map((p) => p.id);
+          getMutualConnectionCounts(ids)
             .then((counts) => setMutualCounts((prev) => ({ ...prev, ...counts })))
+            .catch(() => {});
+          getFollowerCounts(ids)
+            .then((counts) => setFollowerCounts((prev) => ({ ...prev, ...counts })))
             .catch(() => {});
         }
         if (conns.status === "fulfilled") setConnections(conns.value);
@@ -123,6 +133,14 @@ export default function NetworkScreen() {
     setChip(null);
   };
 
+  // Each tab searches different things, so start fresh on switch — shared by
+  // the segmented control and the left/right swipe gesture below.
+  const changeSegment = (next: Segment) => {
+    setSegment(next);
+    clearSearch();
+  };
+  const swipeHandlers = useSwipeTabs(SEGMENTS, segment, changeSegment);
+
   const onSearchChange = (text: string) => {
     setSearch(text);
     if (searchTimer.current) clearTimeout(searchTimer.current);
@@ -135,7 +153,11 @@ export default function NetworkScreen() {
       searchAdvocates(text)
         .then((results) => {
           setSearchResults(results);
-          return getMutualConnectionCounts(results.map((p) => p.id));
+          const ids = results.map((p) => p.id);
+          getFollowerCounts(ids)
+            .then((counts) => setFollowerCounts((prev) => ({ ...prev, ...counts })))
+            .catch(() => {});
+          return getMutualConnectionCounts(ids);
         })
         .then((counts) => setMutualCounts((prev) => ({ ...prev, ...counts })))
         .catch(() => setSearchResults((prev) => prev ?? []));
@@ -319,6 +341,9 @@ export default function NetworkScreen() {
         <HomeButton color={colors.textSecondary} />
       </View>
 
+      {/* Left/right swipe moves between Feed / Connections / Messages, in
+          addition to tapping the segmented control above. */}
+      <View style={{ flex: 1 }} {...swipeHandlers}>
       <ScrollView
         contentContainerStyle={{ paddingBottom: 120 }}
         keyboardShouldPersistTaps="handled"
@@ -336,11 +361,7 @@ export default function NetworkScreen() {
               { key: "messages", label: unreadMessages ? `Messages (${unreadMessages})` : "Messages" },
             ]}
             value={segment}
-            onChange={(key) => {
-              // Each tab searches different things, so start fresh on switch.
-              setSegment(key as Segment);
-              clearSearch();
-            }}
+            onChange={(key) => changeSegment(key as Segment)}
             style={{ marginBottom: spacing.sm, marginHorizontal: spacing.md }}
           />
         </View>
@@ -429,7 +450,7 @@ export default function NetworkScreen() {
                         userId={c.otherParty.id}
                         name={c.otherParty.full_name}
                         photoUrl={c.otherParty.profile_photo_url}
-                        onPress={() => router.push(`/(app)/network/${c.otherParty.id}`)}
+                        onPress={() => openChat(c.otherParty.id)}
                         right={
                           <View style={{ flexDirection: "row", gap: 6 }}>
                             {c.otherParty.phone ? (
@@ -464,16 +485,34 @@ export default function NetworkScreen() {
                   </Text>
                 </View>
                 {chip ? (
-                  <Text style={[typography.label, { color: colors.accent }]} onPress={() => setChip(null)}>
+                  <Text style={[typography.label, { color: colors.accent, marginRight: spacing.sm }]} onPress={() => setChip(null)}>
                     Clear filter
                   </Text>
                 ) : null}
+                <View style={[styles.viewToggle, { borderColor: colors.border, borderRadius: radius.sm }]}>
+                  <Pressable
+                    onPress={() => setDiscoverView("grid")}
+                    accessibilityLabel="Column view"
+                    accessibilityState={{ selected: discoverView === "grid" }}
+                    style={[styles.viewToggleBtn, { backgroundColor: discoverView === "grid" ? colors.surfaceAlt : "transparent" }]}
+                  >
+                    <Ionicons name="grid-outline" size={17} color={discoverView === "grid" ? colors.brand : colors.textSecondary} />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setDiscoverView("list")}
+                    accessibilityLabel="Row view"
+                    accessibilityState={{ selected: discoverView === "list" }}
+                    style={[styles.viewToggleBtn, { backgroundColor: discoverView === "list" ? colors.surfaceAlt : "transparent" }]}
+                  >
+                    <Ionicons name="list-outline" size={17} color={discoverView === "list" ? colors.brand : colors.textSecondary} />
+                  </Pressable>
+                </View>
               </View>
               {discoverList.length === 0 ? (
                 <Text style={[typography.body, { color: colors.textSecondary }]}>
                   {chip || search ? "No advocates match." : "No advocates to show yet."}
                 </Text>
-              ) : (
+              ) : discoverView === "grid" ? (
                 <View style={[styles.grid, { gap: spacing.md }]}>
                   {discoverList.map((p) => (
                     <View key={p.id} style={styles.gridCell}>
@@ -484,6 +523,19 @@ export default function NetworkScreen() {
                         onConnect={() => handleConnect(p)}
                       />
                     </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={{ gap: spacing.sm }}>
+                  {discoverList.map((p) => (
+                    <ColleagueRow
+                      key={p.id}
+                      profile={p}
+                      status={statusById.get(p.id) ?? "none"}
+                      mutualCount={mutualCounts[p.id]}
+                      followerCount={followerCounts[p.id]}
+                      onConnect={() => handleConnect(p)}
+                    />
                   ))}
                 </View>
               )}
@@ -526,6 +578,7 @@ export default function NetworkScreen() {
           )}
         </View>
       </ScrollView>
+      </View>
 
       {segment === "feed" ? (
         <Pressable
@@ -538,6 +591,55 @@ export default function NetworkScreen() {
         </Pressable>
       ) : null}
     </SafeAreaView>
+  );
+}
+
+/** Row-view alternative to ColleagueCard: avatar, name, mutual and follower
+ * counts, and a compact connect action — no bio/specialty/tags. */
+function ColleagueRow({
+  profile,
+  status,
+  mutualCount,
+  followerCount,
+  onConnect,
+}: {
+  profile: PublicProfile;
+  status: ConnectStatus;
+  mutualCount?: number;
+  followerCount?: number;
+  onConnect: () => void;
+}) {
+  const { colors, spacing, radius, typography } = useTheme();
+  const mutual = mutualLabel(mutualCount);
+  return (
+    <Pressable
+      onPress={() => router.push(`/(app)/network/${profile.id}`)}
+      style={({ pressed }) => [
+        styles.personRow,
+        { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, opacity: pressed ? 0.8 : 1 },
+      ]}
+    >
+      <PortraitAvatar name={profile.full_name} photoUrl={profile.profile_photo_url} size={44} verified={profile.is_verified} userId={profile.id} />
+      <View style={{ flex: 1, marginHorizontal: spacing.md }}>
+        <Text style={[typography.bodyStrong, { color: colors.brand }]} numberOfLines={1}>
+          {withAdvPrefix(profile.full_name)}
+        </Text>
+        <Text style={[typography.caption, { color: colors.textSecondary }]} numberOfLines={1}>
+          {mutual ?? "No mutual connections yet"}
+          {followerCount !== undefined ? ` · ${followerCount} follower${followerCount === 1 ? "" : "s"}` : ""}
+        </Text>
+      </View>
+      {status === "none" ? (
+        <SmallButton icon="person-add-outline" label="" accessibilityLabel="Connect" onPress={onConnect} />
+      ) : (
+        <Ionicons
+          name={status === "accepted" ? "people" : "time-outline"}
+          size={18}
+          color={colors.textSecondary}
+          accessibilityLabel={status === "accepted" ? "Connected" : "Requested"}
+        />
+      )}
+    </Pressable>
   );
 }
 
@@ -559,6 +661,8 @@ function PersonRow({
   bold?: boolean;
 }) {
   const { colors, spacing, radius, typography } = useTheme();
+  const [viewerOpen, setViewerOpen] = useState(false);
+
   return (
     <Pressable
       onPress={onPress}
@@ -567,7 +671,13 @@ function PersonRow({
         { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, opacity: pressed ? 0.8 : 1 },
       ]}
     >
-      <Avatar name={name} photoUrl={photoUrl} size={44} userId={userId} />
+      {photoUrl ? (
+        <Pressable onPress={() => setViewerOpen(true)} hitSlop={4} accessibilityLabel={`View ${name}'s photo`}>
+          <Avatar name={name} photoUrl={photoUrl} size={44} userId={userId} />
+        </Pressable>
+      ) : (
+        <Avatar name={name} photoUrl={photoUrl} size={44} userId={userId} />
+      )}
       <View style={{ flex: 1, marginHorizontal: spacing.md }}>
         <Text style={[typography.bodyStrong, { color: colors.brand }]} numberOfLines={1}>
           {name}
@@ -582,6 +692,14 @@ function PersonRow({
         ) : null}
       </View>
       {right}
+
+      {photoUrl ? (
+        <Modal visible={viewerOpen} transparent animationType="fade" onRequestClose={() => setViewerOpen(false)}>
+          <Pressable style={styles.photoViewer} onPress={() => setViewerOpen(false)} accessibilityLabel={`Close ${name}'s photo`}>
+            <Image source={{ uri: photoUrl }} style={styles.photoViewerImage} resizeMode="contain" />
+          </Pressable>
+        </Modal>
+      ) : null}
     </Pressable>
   );
 }
@@ -624,9 +742,13 @@ const styles = StyleSheet.create({
   dot: { position: "absolute", top: 1, right: 1, width: 8, height: 8, borderRadius: 4 },
   search: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, borderWidth: StyleSheet.hairlineWidth },
   sectionHeader: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" },
+  viewToggle: { flexDirection: "row", borderWidth: StyleSheet.hairlineWidth, padding: 2 },
+  viewToggleBtn: { width: 30, height: 30, borderRadius: 6, alignItems: "center", justifyContent: "center" },
   grid: { flexDirection: "row", flexWrap: "wrap" },
   gridCell: { width: "47.5%" },
   personRow: { flexDirection: "row", alignItems: "center" },
+  photoViewer: { flex: 1, backgroundColor: "rgba(0,0,0,0.95)", alignItems: "center", justifyContent: "center" },
+  photoViewerImage: { width: "100%", height: "80%" },
   smallButton: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, height: 34 },
   emptyIcon: { width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center" },
   countPill: { minWidth: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center", paddingHorizontal: 6 },

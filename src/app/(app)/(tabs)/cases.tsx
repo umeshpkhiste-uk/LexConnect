@@ -8,6 +8,7 @@ import { CaseSummary, listCases } from "@/features/cases/api";
 import { CaseBriefCard } from "@/features/cases/CaseBriefCard";
 import { ClientListItem, listClients, uploadClientPhoto } from "@/features/clients/api";
 import { clientCaseTargets } from "@/features/clients/clientCases";
+import { useSwipeTabs } from "@/shared/hooks/useSwipeTabs";
 import { ActionSheet, SheetAction } from "@/shared/ui/ActionSheet";
 import { ClientAvatar } from "@/features/clients/ClientAvatar";
 import { Badge } from "@/shared/ui/Badge";
@@ -16,6 +17,8 @@ import { SegmentedControl } from "@/shared/ui/SegmentedControl";
 import { TextField } from "@/shared/ui/TextField";
 import { HomeButton } from "@/shared/ui/HomeButton";
 import { useTheme } from "@/shared/ui/theme";
+
+const CASES_SEGMENTS = ["cases", "clients"] as const;
 
 const CASE_STATUS_TONE: Record<CaseSummary["status"], "neutral" | "brand" | "success" | "warning" | "danger"> = {
   draft: "neutral",
@@ -36,6 +39,7 @@ export default function CasesScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [clientMenu, setClientMenu] = useState<{ title: string; actions: SheetAction[] } | null>(null);
+  const swipeHandlers = useSwipeTabs(CASES_SEGMENTS, segment, setSegment);
 
   const load = useCallback(() => {
     setIsLoading(true);
@@ -106,6 +110,9 @@ export default function CasesScreen() {
         />
       </View>
 
+      {/* Left/right swipe moves between Cases and Clients, in addition to
+          tapping the segmented control above. */}
+      <View style={{ flex: 1 }} {...swipeHandlers}>
       {isLoading ? (
         <ActivityIndicator color={colors.brand} style={{ marginTop: spacing.xl }} />
       ) : error ? (
@@ -215,6 +222,7 @@ export default function CasesScreen() {
           }}
         />
       )}
+      </View>
 
       <ActionSheet
         visible={!!clientMenu}
