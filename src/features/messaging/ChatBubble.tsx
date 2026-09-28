@@ -6,7 +6,7 @@ import { useTheme } from "@/shared/ui/theme";
 import { getAttachmentUrl, Message } from "./api";
 import { bubbleTime, fileSizeLabel, messagePreview } from "./chatFormat";
 
-export type LocalStatus = "sending" | "failed";
+export type LocalStatus = "sending" | "failed" | "offline";
 
 export type ChatMessage = Message & { localStatus?: LocalStatus; localUri?: string };
 
@@ -62,7 +62,7 @@ export function ChatBubble({
       <Pressable
         onLongPress={onLongPress}
         delayLongPress={300}
-        onPress={message.localStatus === "failed" ? onRetry : undefined}
+        onPress={message.localStatus === "failed" || message.localStatus === "offline" ? onRetry : undefined}
         style={({ pressed }) => [
           styles.bubble,
           bubbleShape(isMine),
@@ -118,6 +118,9 @@ export function ChatBubble({
         {message.localStatus === "failed" ? (
           <Text style={[typography.caption, { color: "#FFB4AB", marginTop: 2 }]}>Not sent · tap to retry</Text>
         ) : null}
+        {message.localStatus === "offline" ? (
+          <Text style={[typography.caption, { color: muted, marginTop: 2 }]}>You&apos;re offline · will send automatically</Text>
+        ) : null}
       </Pressable>
     </View>
   );
@@ -125,6 +128,7 @@ export function ChatBubble({
 
 function Ticks({ message, muted }: { message: ChatMessage; muted: string }) {
   if (message.localStatus === "sending") return <Ionicons name="time-outline" size={13} color={muted} />;
+  if (message.localStatus === "offline") return <Ionicons name="cloud-offline-outline" size={13} color={muted} />;
   if (message.localStatus === "failed") return <Ionicons name="alert-circle" size={14} color="#FFB4AB" />;
   if (message.read_at) return <Ionicons name="checkmark-done" size={16} color={READ_BLUE} accessibilityLabel="Read" />;
   return <Ionicons name="checkmark" size={15} color={muted} accessibilityLabel="Sent" />;

@@ -33,12 +33,12 @@ import {
   listMessages,
   markConversationRead,
   Message,
-  sendMessage,
   subscribeToConversation,
 } from "@/features/messaging/api";
 import { ChatBubble, ChatMessage } from "@/features/messaging/ChatBubble";
 import { setActiveConversation } from "@/features/notifications/activeChat";
 import { buildChatItems, messagePreview } from "@/features/messaging/chatFormat";
+import { discardMessage, queueMessage, retryMessage, subscribeDelivered, subscribePending } from "@/features/messaging/pendingMessages";
 import { Avatar, withAdvPrefix } from "@/features/network/NetworkCards";
 import { useIsOnline } from "@/features/presence/PresenceProvider";
 import { ActionSheet, SheetAction } from "@/shared/ui/ActionSheet";
@@ -61,6 +61,7 @@ export default function ChatScreen() {
   const myId = session?.user.id ?? null;
 
   const [messages, setMessages] = useState<ChatMessage[] | null>(null);
+  const [pending, setPending] = useState<ChatMessage[]>([]);
   const [partner, setPartner] = useState<ChatPartner | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -80,8 +81,6 @@ export default function ChatScreen() {
   const typingSentAt = useRef(0);
   const typingStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const partnerTypingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Files behind unsent (temp) messages, so a failed send can be retried.
-  const pendingFiles = useRef(new Map<string, Attachment | null>());
   const isPartnerOnline = useIsOnline(partner?.id ?? null);
 
   const upsert = useCallback((incoming: ChatMessage) => {
@@ -138,8 +137,21 @@ export default function ChatScreen() {
     };
   }, [id, myId, upsert]);
 
-  const byId = useMemo(() => new Map((messages ?? []).map((m) => [m.id, m])), [messages]);
-  const items = useMemo(() => buildChatItems(messages ?? []), [messages]);
+  // The outbox (queued/failed/offline messages) lives outside this screen so
+  // it survives navigating away and back, and keeps retrying in the
+  // background as connectivity comes and goes.
+  useEffect(() => {
+    const unsubPending = subscribePending(id, setPending);
+    const unsubDelivered = subscribeDelivered(id, upsert);
+    return () => {
+      unsubPending();
+      unsubDelivered();
+    };
+  }, [id, upsert]);
+
+  const allMessages = useMemo(() => [...(messages ?? []), ...pending], [messages, pending]);
+  const byId = useMemo(() => new Map(allMessages.map((m) => [m.id, m])), [allMessages]);
+  const items = useMemo(() => buildChatItems(allMessages), [allMessages]);
 
   const signalTyping = (text: string) => {
     if (!myId || !channelRef.current) return;
@@ -158,22 +170,6 @@ export default function ChatScreen() {
   const onChangeDraft = (text: string) => {
     setDraft(text);
     if (!editing) signalTyping(text);
-  };
-
-  const deliver = async (temp: ChatMessage, file: Attachment | null) => {
-    try {
-      const saved = await sendMessage(id, temp.content, { replyToId: temp.reply_to_id, attachment: file });
-      pendingFiles.current.delete(temp.id);
-      setMessages((prev) => {
-        if (!prev) return prev;
-        const withoutTemp = prev.filter((m) => m.id !== temp.id);
-        return withoutTemp.some((m) => m.id === saved.id)
-          ? withoutTemp
-          : [...withoutTemp, saved].sort((a, b) => a.created_at.localeCompare(b.created_at));
-      });
-    } catch {
-      setMessages((prev) => prev?.map((m) => (m.id === temp.id ? { ...m, localStatus: "failed" } : m)) ?? prev);
-    }
   };
 
   const handleSend = async () => {
@@ -212,20 +208,20 @@ export default function ChatScreen() {
       localStatus: "sending",
       localUri: file?.kind === "image" ? file.uri : undefined,
     };
-    setMessages((prev) => [...(prev ?? []), temp]);
     setDraft("");
     setReplyTo(null);
     setAttachment(null);
     signalTyping("");
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
-    pendingFiles.current.set(temp.id, file);
-    await deliver(temp, file);
+    queueMessage(id, temp, file).catch((err) => {
+      Alert.alert("Couldn't send message", err instanceof Error ? err.message : "Something went wrong");
+    });
   };
 
   const retry = (message: ChatMessage) => {
-    const file = pendingFiles.current.get(message.id) ?? null;
-    setMessages((prev) => prev?.map((m) => (m.id === message.id ? { ...m, localStatus: "sending" } : m)) ?? prev);
-    deliver({ ...message, localStatus: "sending" }, file);
+    retryMessage(id, message.id)?.catch((err) => {
+      Alert.alert("Couldn't send message", err instanceof Error ? err.message : "Something went wrong");
+    });
   };
 
   const pickImage = async (source: "library" | "camera") => {
@@ -330,16 +326,9 @@ export default function ChatScreen() {
       });
     }
     if (isMine && isSaved) actions.push({ label: "Delete for everyone", icon: "trash-outline", onPress: () => confirmDelete(message) });
-    if (message.localStatus === "failed") {
+    if (message.localStatus === "failed" || message.localStatus === "offline") {
       actions.push({ label: "Retry", icon: "refresh-outline", onPress: () => retry(message) });
-      actions.push({
-        label: "Discard",
-        icon: "close-circle-outline",
-        onPress: () => {
-          pendingFiles.current.delete(message.id);
-          setMessages((prev) => prev?.filter((m) => m.id !== message.id) ?? prev);
-        },
-      });
+      actions.push({ label: "Discard", icon: "close-circle-outline", onPress: () => discardMessage(id, message.id) });
     }
     return actions;
   };
