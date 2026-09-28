@@ -54,7 +54,8 @@ export async function listConversations(): Promise<ConversationSummary[]> {
     .from("conversations")
     .select("id, participant_one_id, participant_two_id, last_message_at")
     .or(`participant_one_id.eq.${me},participant_two_id.eq.${me}`)
-    .order("last_message_at", { ascending: false });
+    .order("last_message_at", { ascending: false })
+    .limit(100);
   if (error) throw new Error(error.message);
   if (!rows.length) return [];
 
@@ -62,7 +63,7 @@ export async function listConversations(): Promise<ConversationSummary[]> {
   const conversationIds = rows.map((r) => r.id);
 
   const [profilesResult, lastMessagesResult, unreadResult] = await Promise.all([
-    supabase.from("public_advocate_profiles").select("id, full_name, profile_photo_url").in("id", otherIds),
+    supabase.from("public_advocate_profiles").select("id, full_name, profile_photo_url, messaging_public_key").in("id", otherIds),
     supabase
       .from("messages")
       .select("conversation_id, content, nonce, is_deleted, sender_id, read_at, created_at, attachment_kind")
@@ -88,14 +89,16 @@ export async function listConversations(): Promise<ConversationSummary[]> {
   for (const m of unreadResult.data) {
     unreadCountByConversation.set(m.conversation_id, (unreadCountByConversation.get(m.conversation_id) ?? 0) + 1);
   }
-  // One public-key lookup per distinct other party, reused across their previews.
-  const publicKeyByOtherId = new Map(await Promise.all(otherIds.map(async (id) => [id, await getPublicKey(id)] as const)));
+  // Public keys came back in the same batched profile query above — no
+  // per-partner round trip needed.
+  const publicKeyByOtherId = new Map(profilesResult.data.map((p) => [p.id, p.messaging_public_key ?? null]));
 
   return Promise.all(
     rows.map(async (r) => {
       const otherId = r.participant_one_id === me ? r.participant_two_id : r.participant_one_id;
-      const otherParty = profileById.get(otherId);
-      if (!otherParty) return null;
+      const profile = profileById.get(otherId);
+      if (!profile) return null;
+      const { messaging_public_key: _messagingPublicKey, ...otherParty } = profile;
       const lastMessage = lastMessageByConversation.get(r.id) ?? null;
       return {
         id: r.id,

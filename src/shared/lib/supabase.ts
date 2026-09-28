@@ -28,9 +28,38 @@ if (!supabaseUrl || !supabaseAnonKey) {
 const JWT_SKEW_RETRIES = 3;
 const JWT_SKEW_DELAY_MS = 1000;
 
+// A stalled connection (weak signal, congested wifi) otherwise leaves a
+// fetch promise pending forever — no error, no retry, just a spinner that
+// never resolves. Storage requests (attachment upload/download) get a
+// longer allowance since a multi-MB file can legitimately take a while.
+const API_TIMEOUT_MS = 20_000;
+const STORAGE_TIMEOUT_MS = 60_000;
+
+function withTimeout(promise: Promise<Response>, ms: number): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error("The request timed out. Check your connection and try again.")),
+      ms
+    );
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
 async function fetchWithJwtSkewRetry(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+  const timeoutMs = url.includes("/storage/v1/") ? STORAGE_TIMEOUT_MS : API_TIMEOUT_MS;
+
   for (let attempt = 0; ; attempt++) {
-    const response = await fetch(input, init);
+    const response = await withTimeout(fetch(input, init), timeoutMs);
     if (response.status !== 401 || attempt >= JWT_SKEW_RETRIES) return response;
 
     const body = await response.clone().text();
