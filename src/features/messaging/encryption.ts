@@ -71,13 +71,15 @@ export async function ensureKeyPair(): Promise<nacl.BoxKeyPair> {
   return keyPair;
 }
 
-/** The other party's public key, cached for the session. Null if they
- * haven't opened the app since encryption was introduced. */
+/** The other party's public key, cached for the session once found. A miss
+ * is never cached — the other party may publish their key (by opening the
+ * app) at any moment, and a cached miss would otherwise make every retry
+ * (including the automatic reconnect retry) keep failing until reload. */
 export async function getPublicKey(userId: string): Promise<string | null> {
   if (publicKeyCache.has(userId)) return publicKeyCache.get(userId) ?? null;
   const { data, error } = await supabase.from("public_advocate_profiles").select("messaging_public_key").eq("id", userId).maybeSingle();
   const key = error ? null : (data?.messaging_public_key ?? null);
-  publicKeyCache.set(userId, key);
+  if (key) publicKeyCache.set(userId, key);
   return key;
 }
 
