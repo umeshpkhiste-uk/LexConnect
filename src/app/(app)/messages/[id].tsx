@@ -39,6 +39,7 @@ import { ChatBubble, ChatMessage } from "@/features/messaging/ChatBubble";
 import { setActiveConversation } from "@/features/notifications/activeChat";
 import { buildChatItems, messagePreview } from "@/features/messaging/chatFormat";
 import { discardMessage, queueMessage, retryMessage, subscribeDelivered, subscribePending } from "@/features/messaging/pendingMessages";
+import { alertMessage } from "@/shared/lib/alert";
 import { Avatar, withAdvPrefix } from "@/features/network/NetworkCards";
 import { useIsOnline } from "@/features/presence/PresenceProvider";
 import { ActionSheet, SheetAction } from "@/shared/ui/ActionSheet";
@@ -182,7 +183,7 @@ export default function ChatScreen() {
       upsert({ ...target, content: text, edited_at: new Date().toISOString() });
       editMessage(id, target.id, text).catch((err) => {
         upsert(target);
-        Alert.alert("Couldn't edit message", err instanceof Error ? err.message : "Something went wrong");
+        alertMessage("Couldn't edit message", err instanceof Error ? err.message : "Something went wrong");
       });
       return;
     }
@@ -214,13 +215,13 @@ export default function ChatScreen() {
     signalTyping("");
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
     queueMessage(id, temp, file).catch((err) => {
-      Alert.alert("Couldn't send message", err instanceof Error ? err.message : "Something went wrong");
+      alertMessage("Couldn't send message", err instanceof Error ? err.message : "Something went wrong");
     });
   };
 
   const retry = (message: ChatMessage) => {
     retryMessage(id, message.id)?.catch((err) => {
-      Alert.alert("Couldn't send message", err instanceof Error ? err.message : "Something went wrong");
+      alertMessage("Couldn't send message", err instanceof Error ? err.message : "Something went wrong");
     });
   };
 
@@ -228,7 +229,7 @@ export default function ChatScreen() {
     const permission =
       source === "camera" ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Permission needed", `Allow ${source === "camera" ? "camera" : "photo"} access in Settings to share photos.`);
+      alertMessage("Permission needed", `Allow ${source === "camera" ? "camera" : "photo"} access in Settings to share photos.`);
       return;
     }
     const options: ImagePicker.ImagePickerOptions = { mediaTypes: ["images"], quality: 0.7 };
@@ -250,7 +251,7 @@ export default function ChatScreen() {
     const file = result.canceled ? null : result.assets?.[0];
     if (!file) return;
     if (file.size && file.size > 25 * 1024 * 1024) {
-      Alert.alert("File too large", "You can share files up to 25 MB.");
+      alertMessage("File too large", "You can share files up to 25 MB.");
       return;
     }
     setAttachment({
@@ -267,7 +268,7 @@ export default function ChatScreen() {
     try {
       await Linking.openURL(await getAttachmentUrl(message.attachment_path));
     } catch (err) {
-      Alert.alert("Couldn't open file", err instanceof Error ? err.message : "Something went wrong");
+      alertMessage("Couldn't open file", err instanceof Error ? err.message : "Something went wrong");
     }
   };
 
@@ -283,7 +284,7 @@ export default function ChatScreen() {
             await deleteMessage(message);
           } catch (err) {
             upsert(message);
-            Alert.alert("Couldn't delete message", err instanceof Error ? err.message : "Something went wrong");
+            alertMessage("Couldn't delete message", err instanceof Error ? err.message : "Something went wrong");
           }
         },
       },

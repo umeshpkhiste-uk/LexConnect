@@ -1,10 +1,35 @@
 import "react-native-get-random-values";
 import { decode as decodeBase64, encode as encodeBase64 } from "base64-arraybuffer";
 import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 import nacl from "tweetnacl";
 import { supabase } from "@/shared/lib/supabase";
 
 const SECRET_KEY_STORE_KEY = "messaging-secret-key-v1";
+
+// expo-secure-store has no web implementation at all (its web module is an
+// empty object), so every call would throw there — same reason supabase.ts
+// swaps in a different storage adapter for web. localStorage isn't
+// OS-keychain-backed, but the key still never leaves the device, which is
+// what actually matters for this protocol.
+async function getStoredSecretKey(): Promise<string | null> {
+  if (Platform.OS === "web") {
+    try {
+      return window.localStorage.getItem(SECRET_KEY_STORE_KEY);
+    } catch {
+      return null;
+    }
+  }
+  return SecureStore.getItemAsync(SECRET_KEY_STORE_KEY);
+}
+
+async function storeSecretKey(value: string): Promise<void> {
+  if (Platform.OS === "web") {
+    window.localStorage.setItem(SECRET_KEY_STORE_KEY, value);
+    return;
+  }
+  await SecureStore.setItemAsync(SECRET_KEY_STORE_KEY, value);
+}
 
 let cachedKeyPair: nacl.BoxKeyPair | null = null;
 const publicKeyCache = new Map<string, string | null>();
@@ -31,9 +56,9 @@ function fromBase64(value: string): Uint8Array {
 export async function ensureKeyPair(): Promise<nacl.BoxKeyPair> {
   if (cachedKeyPair) return cachedKeyPair;
 
-  const stored = await SecureStore.getItemAsync(SECRET_KEY_STORE_KEY);
+  const stored = await getStoredSecretKey();
   const keyPair = stored ? nacl.box.keyPair.fromSecretKey(fromBase64(stored)) : nacl.box.keyPair();
-  if (!stored) await SecureStore.setItemAsync(SECRET_KEY_STORE_KEY, toBase64(keyPair.secretKey));
+  if (!stored) await storeSecretKey(toBase64(keyPair.secretKey));
   cachedKeyPair = keyPair;
 
   const publicKeyB64 = toBase64(keyPair.publicKey);
