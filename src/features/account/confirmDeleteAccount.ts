@@ -1,4 +1,4 @@
-import { Alert } from "react-native";
+import { alertMessage, confirmAlert } from "@/shared/lib/alert";
 import { deleteMyAccount } from "./api";
 
 /**
@@ -8,7 +8,7 @@ import { deleteMyAccount } from "./api";
  * sends the app back to the login screen.
  */
 export function confirmDeleteAccount(setBusy: (busy: boolean) => void) {
-  Alert.alert(
+  confirmAlert(
     "Delete your account?",
     "This permanently deletes your profile, clients, cases, hearings, documents, payments, posts, chats and connections, plus every file you've uploaded. It cannot be undone.",
     [
@@ -17,7 +17,7 @@ export function confirmDeleteAccount(setBusy: (busy: boolean) => void) {
         text: "Continue",
         style: "destructive",
         onPress: () =>
-          Alert.alert("Are you absolutely sure?", "Your account and all its data will be erased and can't be recovered.", [
+          confirmAlert("Are you absolutely sure?", "Your account and all its data will be erased and can't be recovered.", [
             { text: "Cancel", style: "cancel" },
             {
               text: "Delete permanently",
@@ -28,7 +28,7 @@ export function confirmDeleteAccount(setBusy: (busy: boolean) => void) {
                   await deleteMyAccount();
                 } catch (err) {
                   setBusy(false);
-                  Alert.alert("Couldn't delete account", err instanceof Error ? err.message : "Something went wrong");
+                  alertMessage("Couldn't delete account", err instanceof Error ? err.message : "Something went wrong");
                 }
               },
             },

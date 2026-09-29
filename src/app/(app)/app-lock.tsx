@@ -1,12 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { clearAppLock, getAppLockInfo, setAppLock, verifyAppLock } from "@/features/applock/appLock";
 import { PatternGrid } from "@/features/applock/PatternGrid";
 import { PinPad } from "@/features/applock/PinPad";
 import { encodePattern, LockMethod, patternError, PIN_LENGTH, pinError } from "@/features/applock/rules";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { alertMessage } from "@/shared/lib/alert";
 import { Button } from "@/shared/ui/Button";
 import { SettingsGroup, SettingsRow } from "@/shared/ui/SettingsGroup";
 import { useTheme } from "@/shared/ui/theme";
@@ -43,7 +44,7 @@ export default function AppLockScreen() {
       await clearAppLock(userId);
       setCurrent(null);
       go({ kind: "menu" });
-      Alert.alert("App lock turned off");
+      alertMessage("App lock turned off");
       return;
     }
     go({ kind: "enter", method: then === "change-pin" ? "pin" : "pattern" });
@@ -77,7 +78,7 @@ export default function AppLockScreen() {
       await setAppLock(userId, step.method, secret);
       setCurrent({ method: step.method, pinLength: step.method === "pin" ? secret.length : undefined });
       go({ kind: "menu" });
-      Alert.alert(
+      alertMessage(
         step.method === "pin" ? "PIN set successfully" : "Pattern registered successfully",
         `LexConnect will ask for your ${step.method === "pin" ? "PIN" : "pattern"} when you open the app.`,
       );

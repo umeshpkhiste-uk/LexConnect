@@ -12,6 +12,7 @@ import { restoreLanguagePreference } from "@/shared/i18n/i18n";
 import { AppFrame } from "@/shared/ui/appFrame";
 import { useTheme } from "@/shared/ui/theme";
 import { restoreThemePreference } from "@/shared/ui/themePreference";
+import { WebAlertHost } from "@/shared/ui/WebAlertHost";
 
 /** locked: gate a saved session. login: logged out, but a PIN / pattern
  * can sign this user back in with the token kept at log out. */
@@ -176,6 +177,7 @@ export default function RootLayout() {
   return (
     <NavigationTheme>
       <AppFrame>
+        <WebAlertHost />
         <AuthProvider>
           <PresenceProvider>
             <RootNavigator />

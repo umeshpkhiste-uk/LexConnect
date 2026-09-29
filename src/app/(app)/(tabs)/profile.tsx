@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Alert, Image, ImageBackground, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, ImageBackground, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { requestPasswordReset } from "@/features/auth/api";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -14,6 +14,7 @@ import { nameForLanguageCode } from "@/shared/i18n/languages";
 import { SettingsGroup, SettingsRow } from "@/shared/ui/SettingsGroup";
 import { HomeButton } from "@/shared/ui/HomeButton";
 import { confirmDeleteAccount } from "@/features/account/confirmDeleteAccount";
+import { alertMessage, confirmAlert } from "@/shared/lib/alert";
 import { useTheme } from "@/shared/ui/theme";
 
 const verificationLabel: Record<AdvocateProfile["verification_status"], string> = {
@@ -32,7 +33,7 @@ const visibilityLabel: Record<Visibility, string> = {
   private: "Private",
 };
 
-const comingSoon = (what: string) => () => Alert.alert("Coming soon", `${what} arrive in a later phase.`);
+const comingSoon = (what: string) => () => alertMessage("Coming soon", `${what} arrive in a later phase.`);
 
 export default function ProfileScreen() {
   const { t, i18n } = useTranslation();
@@ -75,10 +76,10 @@ export default function ProfileScreen() {
         await updateMyProfile({ profile_visibility: next });
       } catch (err) {
         setProfile((p) => (p ? { ...p, profile_visibility: previous } : p));
-        Alert.alert("Couldn't update visibility", err instanceof Error ? err.message : "Something went wrong");
+        alertMessage("Couldn't update visibility", err instanceof Error ? err.message : "Something went wrong");
       }
     };
-    Alert.alert("Manage profile", "Choose who can find your profile in Network search.", [
+    confirmAlert("Manage profile", "Choose who can find your profile in Network search.", [
       { text: visibilityLabel.public, onPress: setVisibility("public") },
       { text: visibilityLabel.connections_only, onPress: setVisibility("connections_only") },
       { text: visibilityLabel.private, onPress: setVisibility("private") },
@@ -88,14 +89,14 @@ export default function ProfileScreen() {
 
   const handleChangePassword = () => {
     if (!email) return;
-    Alert.alert("Change password", `We'll email a password reset link to ${email}.`, [
+    confirmAlert("Change password", `We'll email a password reset link to ${email}.`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Send link",
         onPress: async () => {
           const { error } = await requestPasswordReset(email);
-          if (error) Alert.alert("Couldn't send reset link", error);
-          else Alert.alert("Check your email", "Open the link on this device to set a new password.");
+          if (error) alertMessage("Couldn't send reset link", error);
+          else alertMessage("Check your email", "Open the link on this device to set a new password.");
         },
       },
     ]);
@@ -109,19 +110,19 @@ export default function ProfileScreen() {
       await syncCalendarReminders(enabled).catch(() => {});
     } catch (err) {
       setNotificationsOn(!enabled);
-      Alert.alert("Couldn't update notifications", err instanceof Error ? err.message : "Something went wrong");
+      alertMessage("Couldn't update notifications", err instanceof Error ? err.message : "Something went wrong");
     }
   };
 
   const handleLogout = () => {
-    Alert.alert("Log out", "Are you sure you want to log out?", [
+    confirmAlert("Log out", "Are you sure you want to log out?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Log out",
         style: "destructive",
         onPress: async () => {
           const { error } = await signOutKeepingBiometric();
-          if (error) Alert.alert("Couldn't log out", error);
+          if (error) alertMessage("Couldn't log out", error);
         },
       },
     ]);

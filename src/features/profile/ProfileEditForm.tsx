@@ -1,10 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { COURT_OPTIONS } from "@/shared/data/courts";
 import { BAR_COUNCILS, INDIA_STATES, STATE_NAMES } from "@/shared/data/indiaLocations";
 import { SUPPORTED_LANGUAGES } from "@/shared/i18n/languages";
+import { alertMessage } from "@/shared/lib/alert";
 import { isSameState, lookupPincode, PincodeOption, pincodesForCity } from "@/shared/lib/pincode";
 import { enrolmentError, mobileError, normalizeEnrolment, normalizeIndianMobile, pincodeError } from "@/shared/lib/validation";
 import { Button } from "@/shared/ui/Button";
@@ -133,7 +134,7 @@ export function ProfileEditForm({ profile, email, submitLabel, secondaryLabel, o
   const pickPhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Photo access needed", "Allow photo library access to choose a profile photo.");
+      alertMessage("Photo access needed", "Allow photo library access to choose a profile photo.");
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.7 });
@@ -142,7 +143,7 @@ export function ProfileEditForm({ profile, email, submitLabel, secondaryLabel, o
     try {
       setPhotoUrl(await uploadProfilePhoto(result.assets[0].uri, result.assets[0].mimeType));
     } catch (err) {
-      Alert.alert("Couldn't upload photo", err instanceof Error ? err.message : "Something went wrong");
+      alertMessage("Couldn't upload photo", err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setIsUploading(false);
     }

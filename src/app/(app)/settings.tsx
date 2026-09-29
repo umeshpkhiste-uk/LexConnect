@@ -1,12 +1,13 @@
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, ScrollView, Share } from "react-native";
+import { Platform, ScrollView, Share } from "react-native";
 import { exportMyData } from "@/features/account/api";
 import { getAppLockMethod } from "@/features/applock/appLock";
 import { LockMethod } from "@/features/applock/rules";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { authenticateBiometric, disableBiometric, enableBiometric, getBiometricSupport, isBiometricEnabledFor } from "@/features/biometric/biometric";
+import { alertMessage, confirmAlert } from "@/shared/lib/alert";
 import { SettingsGroup, SettingsRow } from "@/shared/ui/SettingsGroup";
 import { useTheme } from "@/shared/ui/theme";
 import { getThemePreference, setThemePreference, ThemePreference, themePreferenceLabel } from "@/shared/ui/themePreference";
@@ -47,16 +48,12 @@ export default function SettingsScreen() {
       setThemePref(pref);
       setThemePreference(pref);
     };
-    Alert.alert(
-      "Theme",
-      "Choose how LexConnect looks.",
-      [
-        { text: themePreferenceLabel.system, onPress: choose("system") },
-        { text: themePreferenceLabel.light, onPress: choose("light") },
-        { text: themePreferenceLabel.dark, onPress: choose("dark") },
-      ],
-      { cancelable: true },
-    );
+    confirmAlert("Theme", "Choose how LexConnect looks.", [
+      { text: themePreferenceLabel.system, onPress: choose("system") },
+      { text: themePreferenceLabel.light, onPress: choose("light") },
+      { text: themePreferenceLabel.dark, onPress: choose("dark") },
+      { text: "Cancel", style: "cancel" },
+    ]);
   };
 
   const handleBiometricToggle = async (enabled: boolean) => {
@@ -68,13 +65,13 @@ export default function SettingsScreen() {
     }
     const support = await getBiometricSupport();
     if (!support.available) {
-      Alert.alert("Biometrics unavailable", "Set up Face ID, Touch ID or a fingerprint in your device settings first.");
+      alertMessage("Biometrics unavailable", "Set up Face ID, Touch ID or a fingerprint in your device settings first.");
       return;
     }
     if (await authenticateBiometric(`Enable ${support.label} login`)) {
       await enableBiometric(userId, email);
       setBiometric((b) => ({ ...b, enabled: true }));
-      Alert.alert(`${support.label} enabled`, `Next time you open LexConnect or log back in, use ${support.label} instead of your password.`);
+      alertMessage(`${support.label} enabled`, `Next time you open LexConnect or log back in, use ${support.label} instead of your password.`);
     }
   };
 
@@ -82,12 +79,21 @@ export default function SettingsScreen() {
     setIsExporting(true);
     try {
       const data = await exportMyData();
-      await Share.share({
-        title: "LexConnect data export",
-        message: JSON.stringify(data, null, 2),
-      });
+      const json = JSON.stringify(data, null, 2);
+      if (Platform.OS === "web") {
+        // react-native-web has no Share implementation — download the export instead.
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "lexconnect-data-export.json";
+        link.click();
+        URL.revokeObjectURL(url);
+      } else {
+        await Share.share({ title: "LexConnect data export", message: json });
+      }
     } catch (err) {
-      Alert.alert("Export failed", err instanceof Error ? err.message : "Something went wrong");
+      alertMessage("Export failed", err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setIsExporting(false);
     }
