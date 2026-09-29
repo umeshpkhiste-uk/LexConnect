@@ -48,6 +48,18 @@ function formatDay(dateStr: string) {
   return new Date(y, m - 1, d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
+/** "04 Jun" — the ledger table's per-row date cell. */
+function formatShortDay(dateStr: string) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+}
+
+/** "August 2025" — a month group's header, from its "YYYY-MM" key. */
+function formatMonth(monthKey: string) {
+  const [y, m] = monthKey.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+}
+
 /**
  * Plain-text statement for the client. Only fee (income) entries are
  * included — the advocate's own expenses are internal bookkeeping.
@@ -142,22 +154,48 @@ export function buildStatementHtml({
   periodLabel,
 }: StatementInput): string {
   const fees = transactions.filter((t) => t.type === "income");
-  const periodFees = range ? fees.filter((t) => t.transaction_date >= range.from && t.transaction_date <= range.to) : fees;
+  const sortedFees = [...fees].sort((a, b) => a.transaction_date.localeCompare(b.transaction_date));
+  const periodFees = range ? sortedFees.filter((t) => t.transaction_date >= range.from && t.transaction_date <= range.to) : sortedFees;
 
   const overallReceived = totals?.received ?? fees.filter((t) => t.status === "completed").reduce((s, t) => s + Number(t.amount), 0);
   const overallPending = totals?.pending ?? fees.filter((t) => t.status === "pending").reduce((s, t) => s + Number(t.amount), 0);
   const overallTotal = totals?.totalFees ?? overallReceived + overallPending;
-  const periodReceived = periodFees.filter((t) => t.status === "completed").reduce((s, t) => s + Number(t.amount), 0);
   const asOf = lastTransactionDate(fees);
 
-  // The decided/received/balance position is always shown — a period filter
-  // only narrows which line items are listed below it, never hides the
-  // running agreed-fee position itself.
-  const summaryRows = [
-    ["Total amount decided (agreed fees)", formatINR(overallTotal)],
-    ["Received so far", formatINR(overallReceived)],
-    ["Balance due", formatINR(overallPending)],
-    ...(range ? [["Received in this period", formatINR(periodReceived)]] : []),
+  // Ledger-style running balance: starts at the total agreed fee (nothing
+  // paid down yet) and is reduced by each payment actually received. A
+  // period statement's opening balance already accounts for payments made
+  // before that period, so the closing balance still lines up with the
+  // real, current balance due.
+  const priorReceived = range
+    ? sortedFees.filter((t) => t.status === "completed" && t.transaction_date < range.from).reduce((s, t) => s + Number(t.amount), 0)
+    : 0;
+  const openingBalance = overallTotal - priorReceived;
+  const periodReceived = periodFees.filter((t) => t.status === "completed").reduce((s, t) => s + Number(t.amount), 0);
+  const periodPending = periodFees.filter((t) => t.status === "pending").reduce((s, t) => s + Number(t.amount), 0);
+  const closingBalance = openingBalance - periodReceived;
+
+  let runningBalance = openingBalance;
+  const ledgerRows = periodFees.map((t) => {
+    if (t.status === "completed") runningBalance -= Number(t.amount);
+    return { t, balance: runningBalance };
+  });
+
+  const monthGroups = new Map<string, { rows: typeof ledgerRows; received: number; pending: number }>();
+  for (const row of ledgerRows) {
+    const key = row.t.transaction_date.slice(0, 7);
+    if (!monthGroups.has(key)) monthGroups.set(key, { rows: [], received: 0, pending: 0 });
+    const group = monthGroups.get(key)!;
+    group.rows.push(row);
+    if (row.t.status === "completed") group.received += Number(row.t.amount);
+    else group.pending += Number(row.t.amount);
+  }
+
+  const summaryCards: [string, string, string | null][] = [
+    ["Opening Balance", formatINR(openingBalance), range ? `on ${formatDay(range.from)}` : null],
+    ["Total Pending(-)", formatINR(periodPending), null],
+    ["Total Received(+)", formatINR(periodReceived), null],
+    ["Balance Due", formatINR(closingBalance), closingBalance > 0 ? "Client owes" : "Fully paid"],
   ];
 
   const clientDetailRows = [
@@ -197,17 +235,37 @@ export function buildStatementHtml({
         </table></div>`
       : "";
 
-  const rows = [...periodFees]
-    .sort((a, b) => a.transaction_date.localeCompare(b.transaction_date))
-    .map(
-      (t) => `<tr>
-        <td>${escapeHtml(formatDay(t.transaction_date))}</td>
-        <td>${escapeHtml(t.category)}${!caseTitle && t.cases?.title ? ` <span class="muted">(${escapeHtml(t.cases.title)})</span>` : ""}</td>
-        <td class="status ${t.status}">${t.status === "pending" ? "Due" : "Received"}</td>
-        <td class="amount">${escapeHtml(formatINR(Number(t.amount)))}</td>
-      </tr>`
-    )
-    .join("");
+  const ledgerTable =
+    ledgerRows.length === 0
+      ? `<p class="empty">${range ? "No fee entries in this period." : "No fee entries yet."}</p>`
+      : `<table class="ledger">
+          <thead><tr><th>Date</th><th>Details</th><th class="amount">Pending(-)</th><th class="amount">Received(+)</th><th class="amount">Balance</th></tr></thead>
+          ${[...monthGroups.entries()]
+            .map(
+              ([key, group]) => `
+            <tbody>
+              <tr class="month-header"><td colspan="5">${escapeHtml(formatMonth(key))}</td></tr>
+              ${group.rows
+                .map(
+                  ({ t, balance }) => `<tr>
+                    <td>${escapeHtml(formatShortDay(t.transaction_date))}</td>
+                    <td>${escapeHtml(t.category)}${!caseTitle && t.cases?.title ? ` <span class="muted">(${escapeHtml(t.cases.title)})</span>` : ""}</td>
+                    <td class="amount pending">${t.status === "pending" ? escapeHtml(formatINR(Number(t.amount))) : ""}</td>
+                    <td class="amount received">${t.status === "completed" ? escapeHtml(formatINR(Number(t.amount))) : ""}</td>
+                    <td class="amount">${escapeHtml(formatINR(balance))}</td>
+                  </tr>`
+                )
+                .join("")}
+              <tr class="month-total">
+                <td colspan="2">${escapeHtml(formatMonth(key))} Total</td>
+                <td class="amount">${escapeHtml(formatINR(group.pending))}</td>
+                <td class="amount">${escapeHtml(formatINR(group.received))}</td>
+                <td></td>
+              </tr>
+            </tbody>`
+            )
+            .join("")}
+        </table>`;
 
   return `<!doctype html>
 <html>
@@ -215,22 +273,30 @@ export function buildStatementHtml({
 <meta charset="utf-8" />
 <style>
   body { font-family: -apple-system, Helvetica, Arial, sans-serif; color: #0F172A; padding: 32px; }
-  h1 { font-size: 20px; margin: 0 0 4px; }
-  .subtitle { color: #475569; font-size: 13px; margin: 0 0 24px; }
+  h1 { font-size: 20px; margin: 0 0 4px; text-align: center; }
+  .subtitle { color: #475569; font-size: 13px; margin: 0 0 4px; text-align: center; }
+  .period { color: #64748B; font-size: 12px; margin: 0 0 24px; text-align: center; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #64748B; padding: 8px 4px; border-bottom: 1px solid #CBD5E1; }
-  td { padding: 10px 4px; border-bottom: 1px solid #F1F5F9; }
-  td.amount { text-align: right; font-variant-numeric: tabular-nums; }
-  td.status { text-transform: capitalize; }
-  td.status.pending { color: #B3261E; }
   .muted { color: #94A3B8; font-size: 12px; }
   .empty { color: #64748B; padding: 24px 0; text-align: center; }
   .signoff { margin-top: 32px; font-size: 13px; }
-  .as-of { color: #64748B; font-size: 12px; margin: -4px 0 24px; }
-  .summary-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; border-top: 1px solid #E2E8F0; border-bottom: 1px solid #E2E8F0; }
-  .summary-table td { padding: 16px 12px 16px 0; vertical-align: top; border: none; }
-  .summary-table .label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #64748B; }
-  .summary-table .value { display: block; font-size: 18px; font-weight: 600; margin-top: 2px; }
+  .as-of { color: #64748B; font-size: 12px; margin: -18px 0 24px; text-align: center; }
+  .cards-table { width: 100%; border-collapse: separate; border-spacing: 12px 0; margin: 0 0 24px; }
+  .cards-table td { width: 25%; vertical-align: top; padding: 0; border: 1px solid #E2E8F0; border-radius: 8px; }
+  .card { padding: 12px 14px; }
+  .card-label { display: block; font-size: 11px; color: #64748B; }
+  .card-value { display: block; font-size: 17px; font-weight: 700; margin-top: 4px; }
+  .card-value.credit { color: #15803D; }
+  .card-value.debit { color: #B3261E; }
+  .card-note { display: block; font-size: 11px; color: #94A3B8; margin-top: 2px; }
+  .entries-count { font-size: 12px; color: #475569; margin: 0 0 8px; }
+  table.ledger th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #64748B; padding: 8px 4px; border-bottom: 1px solid #CBD5E1; }
+  table.ledger td { padding: 9px 4px; border-bottom: 1px solid #F1F5F9; }
+  table.ledger td.amount { text-align: right; font-variant-numeric: tabular-nums; }
+  table.ledger td.pending { color: #B3261E; }
+  table.ledger td.received { color: #15803D; }
+  tr.month-header td { background: #F8FAFC; font-weight: 600; font-size: 12px; padding: 8px 4px; border-bottom: 1px solid #E2E8F0; }
+  tr.month-total td { font-weight: 600; background: #FAFAFA; border-bottom: 2px solid #E2E8F0; }
   .boxes-table { width: 100%; border-collapse: separate; border-spacing: 16px 0; margin: 0 0 24px; }
   .boxes-table td { width: 50%; vertical-align: top; padding: 0; border: none; }
   .box { background: #F8FAFC; border-radius: 8px; padding: 14px 16px; }
@@ -239,19 +305,32 @@ export function buildStatementHtml({
   table.box-rows td { padding: 3px 0; font-size: 13px; border: none; }
   td.box-label { color: #64748B; width: 42%; }
   table.cases { margin-top: 6px; }
-  table.cases th, table.cases td { padding: 6px 4px; }
+  table.cases td { padding: 6px 4px; border-bottom: 1px solid #F1F5F9; }
+  table.cases th { text-align: left; font-size: 11px; text-transform: uppercase; color: #64748B; padding: 6px 4px; }
+  table.cases td.amount { text-align: right; }
 </style>
 </head>
 <body>
-  <h1>Payment statement — ${escapeHtml(clientName)}</h1>
-  <p class="subtitle">
-    ${caseTitle ? `Case: ${escapeHtml(caseTitle)}${caseNumber ? ` (${escapeHtml(caseNumber)})` : ""} · ` : ""}
-    Period: ${escapeHtml(periodLabel ?? "Complete transaction history")} ·
+  <h1>${escapeHtml(clientName)} — Statement</h1>
+  <p class="subtitle">${[clientPhone ? `Phone: ${clientPhone}` : null, caseTitle ? `Case: ${caseTitle}${caseNumber ? ` (${caseNumber})` : ""}` : null]
+    .filter((s): s is string => s !== null)
+    .map(escapeHtml)
+    .join(" · ")}</p>
+  <p class="period">
+    (${escapeHtml(periodLabel ?? "Complete transaction history")}) ·
     ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
   </p>
 
-  <table class="summary-table"><tr>
-    ${summaryRows.map(([label, value]) => `<td><span class="label">${escapeHtml(label)}</span><span class="value">${escapeHtml(value)}</span></td>`).join("")}
+  <table class="cards-table"><tr>
+    ${summaryCards
+      .map(
+        ([label, value, note], i) => `<td><div class="card">
+          <span class="card-label">${escapeHtml(label)}</span>
+          <span class="card-value ${i === 2 ? "credit" : i === 1 ? "debit" : ""}">${escapeHtml(value)}</span>
+          ${note ? `<span class="card-note">${escapeHtml(note)}</span>` : ""}
+        </div></td>`
+      )
+      .join("")}
   </tr></table>
   ${asOf ? `<p class="as-of">Position as of the last transaction, ${escapeHtml(formatDay(asOf))}.</p>` : ""}
 
@@ -261,29 +340,50 @@ export function buildStatementHtml({
   </tr></table>
   ${casesTable}
 
-  ${
-    periodFees.length === 0
-      ? `<p class="empty">${range ? "No fee entries in this period." : "No fee entries yet."}</p>`
-      : `<table>
-          <thead><tr><th>Date</th><th>Category</th><th>Status</th><th class="amount">Amount</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`
-  }
+  <p class="entries-count">No. of entries: ${ledgerRows.length}${periodLabel ? ` (${escapeHtml(periodLabel)})` : ""}</p>
+  ${ledgerTable}
 
   ${advocateName ? `<p class="signoff">Regards,<br />${escapeHtml(advocateName)}</p>` : ""}
 </body>
 </html>`;
 }
 
+/**
+ * expo-print's web implementation ignores whatever HTML is passed to
+ * printToFileAsync/printAsync entirely — its whole implementation is
+ * `async printToFileAsync() { window.print(); }` — so it was printing
+ * *this app's own page*, not the statement. There is no web build of
+ * expo-print that actually renders arbitrary HTML, so on web we open the
+ * statement in its own tab and print that tab instead: the one reliable,
+ * dependency-free way to turn arbitrary HTML into a "Save as PDF" prompt
+ * in a browser.
+ */
+function printHtmlOnWeb(html: string) {
+  const win = window.open("", "_blank");
+  if (!win) {
+    alertMessage("Pop-up blocked", "Allow pop-ups for this site, then try again.");
+    return;
+  }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  // Let the new document finish laying out before printing — some
+  // browsers ignore print() called synchronously right after write().
+  setTimeout(() => {
+    win.focus();
+    win.print();
+  }, 300);
+}
+
 /** Generates the statement as a PDF and hands it to the OS to save or
- * share. On web, expo-print opens the browser's print dialog (the user
- * chooses "Save as PDF"); on native it saves a file and opens the share
- * sheet, since there's no equivalent print dialog to fall back on. */
+ * share. On web this opens the statement in a new tab and triggers the
+ * browser's print dialog, where "Save as PDF" produces the file; on
+ * native it saves a real PDF file and opens the share sheet. */
 export async function downloadStatementPdf(input: StatementInput, title: string) {
   const html = buildStatementHtml(input);
   try {
     if (Platform.OS === "web") {
-      await Print.printToFileAsync({ html });
+      printHtmlOnWeb(html);
       return;
     }
     const { uri } = await Print.printToFileAsync({ html });
@@ -356,7 +456,7 @@ export async function shareStatementViaWhatsApp(input: StatementInput, phone: st
       "Save the PDF, then attach it",
       "The print dialog opens next — choose \"Save as PDF\". WhatsApp will then open so you can attach the saved file to the chat."
     );
-    await Print.printToFileAsync({ html: buildStatementHtml(input) });
+    printHtmlOnWeb(buildStatementHtml(input));
     await shareViaWhatsApp(`Sending the payment statement PDF for ${input.clientName}.`, phone);
     return;
   }
