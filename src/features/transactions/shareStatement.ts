@@ -179,9 +179,9 @@ export function buildStatementHtml({
 
   const detailBox = (title: string, rows: [string, string][]) =>
     rows.length
-      ? `<div class="box"><div class="box-title">${escapeHtml(title)}</div>${rows
-          .map(([label, value]) => `<div class="box-row"><span class="box-label">${escapeHtml(label)}</span><span>${escapeHtml(value)}</span></div>`)
-          .join("")}</div>`
+      ? `<div class="box"><div class="box-title">${escapeHtml(title)}</div><table class="box-rows">${rows
+          .map(([label, value]) => `<tr><td class="box-label">${escapeHtml(label)}</td><td>${escapeHtml(value)}</td></tr>`)
+          .join("")}</table></div>`
       : "";
 
   const casesTable =
@@ -217,10 +217,6 @@ export function buildStatementHtml({
   body { font-family: -apple-system, Helvetica, Arial, sans-serif; color: #0F172A; padding: 32px; }
   h1 { font-size: 20px; margin: 0 0 4px; }
   .subtitle { color: #475569; font-size: 13px; margin: 0 0 24px; }
-  .summary { display: flex; gap: 24px; margin-bottom: 28px; border-top: 1px solid #E2E8F0; border-bottom: 1px solid #E2E8F0; padding: 16px 0; }
-  .summary div { flex: 1; }
-  .summary .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #64748B; }
-  .summary .value { font-size: 18px; font-weight: 600; margin-top: 2px; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #64748B; padding: 8px 4px; border-bottom: 1px solid #CBD5E1; }
   td { padding: 10px 4px; border-bottom: 1px solid #F1F5F9; }
@@ -230,12 +226,18 @@ export function buildStatementHtml({
   .muted { color: #94A3B8; font-size: 12px; }
   .empty { color: #64748B; padding: 24px 0; text-align: center; }
   .signoff { margin-top: 32px; font-size: 13px; }
-  .as-of { color: #64748B; font-size: 12px; margin: -20px 0 24px; }
-  .boxes { display: flex; gap: 16px; margin-bottom: 24px; }
-  .box { flex: 1; background: #F8FAFC; border-radius: 8px; padding: 14px 16px; }
+  .as-of { color: #64748B; font-size: 12px; margin: -4px 0 24px; }
+  .summary-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; border-top: 1px solid #E2E8F0; border-bottom: 1px solid #E2E8F0; }
+  .summary-table td { padding: 16px 12px 16px 0; vertical-align: top; border: none; }
+  .summary-table .label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #64748B; }
+  .summary-table .value { display: block; font-size: 18px; font-weight: 600; margin-top: 2px; }
+  .boxes-table { width: 100%; border-collapse: separate; border-spacing: 16px 0; margin: 0 0 24px; }
+  .boxes-table td { width: 50%; vertical-align: top; padding: 0; border: none; }
+  .box { background: #F8FAFC; border-radius: 8px; padding: 14px 16px; }
   .box-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #64748B; margin-bottom: 8px; }
-  .box-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; padding: 3px 0; }
-  .box-label { color: #64748B; }
+  table.box-rows { width: 100%; border-collapse: collapse; }
+  table.box-rows td { padding: 3px 0; font-size: 13px; border: none; }
+  td.box-label { color: #64748B; width: 42%; }
   table.cases { margin-top: 6px; }
   table.cases th, table.cases td { padding: 6px 4px; }
 </style>
@@ -248,15 +250,15 @@ export function buildStatementHtml({
     ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
   </p>
 
-  <div class="summary">
-    ${summaryRows.map(([label, value]) => `<div><div class="label">${escapeHtml(label)}</div><div class="value">${escapeHtml(value)}</div></div>`).join("")}
-  </div>
+  <table class="summary-table"><tr>
+    ${summaryRows.map(([label, value]) => `<td><span class="label">${escapeHtml(label)}</span><span class="value">${escapeHtml(value)}</span></td>`).join("")}
+  </tr></table>
   ${asOf ? `<p class="as-of">Position as of the last transaction, ${escapeHtml(formatDay(asOf))}.</p>` : ""}
 
-  <div class="boxes">
-    ${detailBox("Client details", [["Name", clientName], ...clientDetailRows])}
-    ${detailBox("Case details", caseDetailRows)}
-  </div>
+  <table class="boxes-table"><tr>
+    <td>${detailBox("Client details", [["Name", clientName], ...clientDetailRows])}</td>
+    <td>${detailBox("Case details", caseDetailRows)}</td>
+  </tr></table>
   ${casesTable}
 
   ${
