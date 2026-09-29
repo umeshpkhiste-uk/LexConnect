@@ -55,3 +55,11 @@ export async function updatePassword(newPassword: string): Promise<AuthResult> {
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   return { error: error?.message ?? null };
 }
+
+/** Re-authenticates with the account's current password to confirm "this is
+ * really you" before an in-app password change — unlike signInWithEmail,
+ * this has none of the biometric-login side effects of a normal sign-in. */
+export async function verifyCurrentPassword(email: string, password: string): Promise<AuthResult> {
+  const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+  return { error: error?.message ?? null };
+}

@@ -4,7 +4,6 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Image, ImageBackground, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { requestPasswordReset } from "@/features/auth/api";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { signOutKeepingBiometric } from "@/features/biometric/biometric";
 import { syncCalendarReminders } from "@/features/notifications/device";
@@ -84,21 +83,6 @@ export default function ProfileScreen() {
       { text: visibilityLabel.connections_only, onPress: setVisibility("connections_only") },
       { text: visibilityLabel.private, onPress: setVisibility("private") },
       { text: "Cancel", style: "cancel" },
-    ]);
-  };
-
-  const handleChangePassword = () => {
-    if (!email) return;
-    confirmAlert("Change password", `We'll email a password reset link to ${email}.`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Send link",
-        onPress: async () => {
-          const { error } = await requestPasswordReset(email);
-          if (error) alertMessage("Couldn't send reset link", error);
-          else alertMessage("Check your email", "Open the link on this device to set a new password.");
-        },
-      },
     ]);
   };
 
@@ -199,7 +183,7 @@ export default function ProfileScreen() {
             subtitle={profile ? visibilityLabel[profile.profile_visibility] : undefined}
             onPress={handleVisibilityPress}
           />
-          <SettingsRow icon="key-outline" label={t("settings.changePassword")} onPress={handleChangePassword} />
+          <SettingsRow icon="key-outline" label={t("settings.changePassword")} onPress={() => router.push("/(app)/change-password")} />
           <SettingsRow
             icon="notifications-outline"
             label={t("settings.notifications")}
