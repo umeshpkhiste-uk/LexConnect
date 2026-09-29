@@ -3,7 +3,7 @@ import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { AdvocateProfile, getMyProfile, updateMyProfile } from "@/features/profile/api";
-import { alertMessage } from "@/shared/lib/alert";
+import { alertMessage, confirmAlert } from "@/shared/lib/alert";
 import { ScreenContainer } from "@/shared/ui/ScreenContainer";
 import { useTheme } from "@/shared/ui/theme";
 
@@ -32,8 +32,16 @@ export default function ManageProfileScreen() {
       .catch(() => {});
   }, []);
 
-  const choose = async (value: Visibility) => {
+  const choose = (value: Visibility) => {
     if (value === selected || saving) return;
+    const option = OPTIONS.find((o) => o.value === value)!;
+    confirmAlert("Change profile visibility?", `Set your profile to "${option.label}" — ${option.description.toLowerCase()}`, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Confirm", onPress: () => applyVisibility(value) },
+    ]);
+  };
+
+  const applyVisibility = async (value: Visibility) => {
     const previous = selected;
     setSelected(value);
     setSaving(value);
