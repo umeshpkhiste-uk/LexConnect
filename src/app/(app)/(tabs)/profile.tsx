@@ -66,26 +66,6 @@ export default function ProfileScreen() {
     }, []),
   );
 
-  const handleVisibilityPress = () => {
-    if (!profile) return;
-    const setVisibility = (next: Visibility) => async () => {
-      const previous = profile.profile_visibility;
-      setProfile({ ...profile, profile_visibility: next });
-      try {
-        await updateMyProfile({ profile_visibility: next });
-      } catch (err) {
-        setProfile((p) => (p ? { ...p, profile_visibility: previous } : p));
-        alertMessage("Couldn't update visibility", err instanceof Error ? err.message : "Something went wrong");
-      }
-    };
-    confirmAlert("Manage profile", "Choose who can find your profile in Network search.", [
-      { text: visibilityLabel.public, onPress: setVisibility("public") },
-      { text: visibilityLabel.connections_only, onPress: setVisibility("connections_only") },
-      { text: visibilityLabel.private, onPress: setVisibility("private") },
-      { text: "Cancel", style: "cancel" },
-    ]);
-  };
-
   const handleNotificationsToggle = async (enabled: boolean) => {
     setNotificationsOn(enabled);
     try {
@@ -181,7 +161,7 @@ export default function ProfileScreen() {
             icon="eye-outline"
             label={t("settings.manageProfile")}
             subtitle={profile ? visibilityLabel[profile.profile_visibility] : undefined}
-            onPress={handleVisibilityPress}
+            onPress={() => router.push("/(app)/manage-profile")}
           />
           <SettingsRow icon="key-outline" label={t("settings.changePassword")} onPress={() => router.push("/(app)/change-password")} />
           <SettingsRow
