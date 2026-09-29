@@ -14,7 +14,7 @@ import { DonutChart } from "@/shared/ui/DonutChart";
 import { useTheme } from "@/shared/ui/theme";
 import { ClientTransaction, getReceiptUrl, listTransactionsForCase, listTransactionsForClient } from "./api";
 import { computeFeeTotals } from "./feeTotals";
-import { buildStatement, shareViaEmail, shareViaSms, shareViaSystem, shareViaWhatsApp, StatementRange } from "./shareStatement";
+import { buildStatement, downloadStatementPdf, shareViaEmail, shareViaSms, shareViaSystem, shareViaWhatsApp, StatementRange } from "./shareStatement";
 
 type SharePeriod = { label: string; range?: StatementRange };
 
@@ -143,17 +143,17 @@ export function LedgerView({ clientId, caseId, variant = "screen" }: Props) {
     );
   }
 
-  const statement = () =>
-    buildStatement({
-      clientName: client.full_name,
-      caseTitle: caseDetail?.title,
-      caseNumber: caseDetail?.case_number,
-      advocateName,
-      transactions,
-      totals: { totalFees: totals.totalFees, received: totals.received, pending: totals.pending },
-      range: sharePeriod.range,
-      periodLabel: sharePeriod.label,
-    });
+  const statementInput = () => ({
+    clientName: client.full_name,
+    caseTitle: caseDetail?.title,
+    caseNumber: caseDetail?.case_number,
+    advocateName,
+    transactions,
+    totals: { totalFees: totals.totalFees, received: totals.received, pending: totals.pending },
+    range: sharePeriod.range,
+    periodLabel: sharePeriod.label,
+  });
+  const statement = () => buildStatement(statementInput());
   const subject = `Payment statement${caseDetail ? ` — ${caseDetail.title}` : ""}`;
 
   const choosePeriod = (period: SharePeriod) => {
@@ -185,6 +185,7 @@ export function LedgerView({ clientId, caseId, variant = "screen" }: Props) {
       onPress: () => shareViaEmail(statement(), subject, client.email),
     },
     { label: "Text message (SMS)", icon: "chatbox-outline", onPress: () => shareViaSms(statement(), client.phone) },
+    { label: "Download PDF", icon: "document-outline", onPress: () => downloadStatementPdf(statementInput(), subject) },
     { label: "More options…", icon: "share-social-outline", onPress: () => shareViaSystem(statement(), subject) },
   ];
   const monthActions: SheetAction[] = [
