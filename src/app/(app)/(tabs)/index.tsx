@@ -214,7 +214,8 @@ export default function HomeScreen() {
                 onPress={() => {
                   if (item.type === "hearing") router.push(`/(app)/hearings/${item.id}`);
                   else if (item.caseId) router.push(`/(app)/cases/${item.caseId}`);
-                  else openCalendar(item.at);
+                  else if (item.type === "meeting") router.push(`/(app)/meetings/new?id=${item.id}`);
+                  else router.push(`/(app)/tasks/new?id=${item.id}`);
                 }}
                 style={[styles.todayRow, { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md }]}
               >
