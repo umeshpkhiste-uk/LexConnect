@@ -9,8 +9,20 @@ export type StatementRange = { from: string; to: string };
 
 type StatementInput = {
   clientName: string;
+  clientPhone?: string | null;
+  clientEmail?: string | null;
+  clientAddress?: string | null;
   caseTitle?: string | null;
   caseNumber?: string | null;
+  caseType?: string | null;
+  court?: string | null;
+  oppositeParty?: string | null;
+  filingDate?: string | null;
+  /** The agreed fee for this specific case, when scoped to one. */
+  agreedFee?: number | null;
+  /** When not scoped to one case, every case this client has with its own
+   * agreed fee — so the decided amount per case is still visible. */
+  cases?: { title: string; caseNumber: string | null; agreedFee: number | null }[];
   advocateName?: string | null;
   transactions: (Transaction & { cases?: { title: string } | null })[];
   /** Fee position from the agreed fees; defaults to summing the entries.
@@ -25,6 +37,12 @@ type StatementInput = {
   periodLabel?: string;
 };
 
+/** Most recent fee entry's date — "the decided amount as of last
+ * transaction" is this running position evaluated as of that date. */
+function lastTransactionDate(fees: { transaction_date: string }[]): string | null {
+  return fees.reduce<string | null>((latest, t) => (!latest || t.transaction_date > latest ? t.transaction_date : latest), null);
+}
+
 function formatDay(dateStr: string) {
   const [y, m, d] = dateStr.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
@@ -36,8 +54,16 @@ function formatDay(dateStr: string) {
  */
 export function buildStatement({
   clientName,
+  clientPhone,
+  clientEmail,
   caseTitle,
   caseNumber,
+  caseType,
+  court,
+  oppositeParty,
+  filingDate,
+  agreedFee,
+  cases,
   advocateName,
   transactions,
   totals,
@@ -51,20 +77,30 @@ export function buildStatement({
   const overallPending = totals?.pending ?? fees.filter((t) => t.status === "pending").reduce((s, t) => s + Number(t.amount), 0);
   const overallTotal = totals?.totalFees ?? overallReceived + overallPending;
   const periodReceived = periodFees.filter((t) => t.status === "completed").reduce((s, t) => s + Number(t.amount), 0);
+  const asOf = lastTransactionDate(fees);
 
   const lines = [
     `Payment statement — ${clientName}`,
+    clientPhone ? `Phone: ${clientPhone}` : null,
+    clientEmail ? `Email: ${clientEmail}` : null,
     caseTitle ? `Case: ${caseTitle}${caseNumber ? ` (${caseNumber})` : ""}` : null,
+    caseTitle && caseType ? `Type: ${caseType}` : null,
+    caseTitle && court ? `Court: ${court}` : null,
+    caseTitle && oppositeParty ? `Opposite party: ${oppositeParty}` : null,
+    caseTitle && filingDate ? `Filed: ${formatDay(filingDate)}` : null,
+    caseTitle && agreedFee != null ? `Agreed fee: ${formatINR(agreedFee)}` : null,
+    !caseTitle && cases?.length ? "Cases:" : null,
+    ...(!caseTitle && cases?.length
+      ? cases.map((c) => `  • ${c.title}${c.caseNumber ? ` (${c.caseNumber})` : ""} — agreed fee: ${c.agreedFee != null ? formatINR(c.agreedFee) : "not set"}`)
+      : []),
     `Period: ${periodLabel ?? "Complete transaction history"}`,
     `Date: ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`,
     "",
-    ...(range
-      ? [`Received in this period: ${formatINR(periodReceived)}`, `Outstanding balance (overall): ${formatINR(overallPending)}`]
-      : [
-          `Total fees: ${formatINR(overallTotal)}`,
-          `Received: ${formatINR(overallReceived)}`,
-          `Balance due: ${formatINR(overallPending)}`,
-        ]),
+    `Total amount decided (agreed fees): ${formatINR(overallTotal)}`,
+    `Received so far: ${formatINR(overallReceived)}`,
+    `Balance due: ${formatINR(overallPending)}`,
+    asOf ? `As of last transaction (${formatDay(asOf)})` : null,
+    ...(range ? ["", `Received in this period: ${formatINR(periodReceived)}`] : []),
     "",
     "Details:",
     ...(periodFees.length === 0
@@ -88,8 +124,17 @@ function escapeHtml(value: string): string {
 /** Same statement, laid out as a printable HTML document for the PDF. */
 export function buildStatementHtml({
   clientName,
+  clientPhone,
+  clientEmail,
+  clientAddress,
   caseTitle,
   caseNumber,
+  caseType,
+  court,
+  oppositeParty,
+  filingDate,
+  agreedFee,
+  cases,
   advocateName,
   transactions,
   totals,
@@ -103,17 +148,54 @@ export function buildStatementHtml({
   const overallPending = totals?.pending ?? fees.filter((t) => t.status === "pending").reduce((s, t) => s + Number(t.amount), 0);
   const overallTotal = totals?.totalFees ?? overallReceived + overallPending;
   const periodReceived = periodFees.filter((t) => t.status === "completed").reduce((s, t) => s + Number(t.amount), 0);
+  const asOf = lastTransactionDate(fees);
 
-  const summaryRows = range
+  // The decided/received/balance position is always shown — a period filter
+  // only narrows which line items are listed below it, never hides the
+  // running agreed-fee position itself.
+  const summaryRows = [
+    ["Total amount decided (agreed fees)", formatINR(overallTotal)],
+    ["Received so far", formatINR(overallReceived)],
+    ["Balance due", formatINR(overallPending)],
+    ...(range ? [["Received in this period", formatINR(periodReceived)]] : []),
+  ];
+
+  const clientDetailRows = [
+    clientPhone ? ["Phone", clientPhone] : null,
+    clientEmail ? ["Email", clientEmail] : null,
+    clientAddress ? ["Address", clientAddress] : null,
+  ].filter((r): r is [string, string] => r !== null);
+
+  const caseDetailRows = caseTitle
     ? [
-        ["Received in this period", formatINR(periodReceived)],
-        ["Outstanding balance (overall)", formatINR(overallPending)],
-      ]
-    : [
-        ["Total fees", formatINR(overallTotal)],
-        ["Received", formatINR(overallReceived)],
-        ["Balance due", formatINR(overallPending)],
-      ];
+        caseNumber ? ["Case number", caseNumber] : null,
+        caseType ? ["Type", caseType] : null,
+        court ? ["Court", court] : null,
+        oppositeParty ? ["Opposite party", oppositeParty] : null,
+        filingDate ? ["Filed", formatDay(filingDate)] : null,
+        agreedFee != null ? ["Agreed fee", formatINR(agreedFee)] : null,
+      ].filter((r): r is [string, string] => r !== null)
+    : [];
+
+  const detailBox = (title: string, rows: [string, string][]) =>
+    rows.length
+      ? `<div class="box"><div class="box-title">${escapeHtml(title)}</div>${rows
+          .map(([label, value]) => `<div class="box-row"><span class="box-label">${escapeHtml(label)}</span><span>${escapeHtml(value)}</span></div>`)
+          .join("")}</div>`
+      : "";
+
+  const casesTable =
+    !caseTitle && cases?.length
+      ? `<div class="box"><div class="box-title">Cases &amp; agreed fees</div><table class="cases">
+          <thead><tr><th>Case</th><th class="amount">Agreed fee</th></tr></thead>
+          <tbody>${cases
+            .map(
+              (c) =>
+                `<tr><td>${escapeHtml(c.title)}${c.caseNumber ? ` <span class="muted">(${escapeHtml(c.caseNumber)})</span>` : ""}</td><td class="amount">${escapeHtml(c.agreedFee != null ? formatINR(c.agreedFee) : "Not set")}</td></tr>`
+            )
+            .join("")}</tbody>
+        </table></div>`
+      : "";
 
   const rows = [...periodFees]
     .sort((a, b) => a.transaction_date.localeCompare(b.transaction_date))
@@ -148,6 +230,14 @@ export function buildStatementHtml({
   .muted { color: #94A3B8; font-size: 12px; }
   .empty { color: #64748B; padding: 24px 0; text-align: center; }
   .signoff { margin-top: 32px; font-size: 13px; }
+  .as-of { color: #64748B; font-size: 12px; margin: -20px 0 24px; }
+  .boxes { display: flex; gap: 16px; margin-bottom: 24px; }
+  .box { flex: 1; background: #F8FAFC; border-radius: 8px; padding: 14px 16px; }
+  .box-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #64748B; margin-bottom: 8px; }
+  .box-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; padding: 3px 0; }
+  .box-label { color: #64748B; }
+  table.cases { margin-top: 6px; }
+  table.cases th, table.cases td { padding: 6px 4px; }
 </style>
 </head>
 <body>
@@ -161,6 +251,13 @@ export function buildStatementHtml({
   <div class="summary">
     ${summaryRows.map(([label, value]) => `<div><div class="label">${escapeHtml(label)}</div><div class="value">${escapeHtml(value)}</div></div>`).join("")}
   </div>
+  ${asOf ? `<p class="as-of">Position as of the last transaction, ${escapeHtml(formatDay(asOf))}.</p>` : ""}
+
+  <div class="boxes">
+    ${detailBox("Client details", [["Name", clientName], ...clientDetailRows])}
+    ${detailBox("Case details", caseDetailRows)}
+  </div>
+  ${casesTable}
 
   ${
     periodFees.length === 0
@@ -234,4 +331,41 @@ export function shareViaSms(text: string, phone?: string | null) {
 
 export function shareViaSystem(text: string, title: string) {
   return Share.share({ title, message: text });
+}
+
+/**
+ * Sends the statement to the client via WhatsApp as a PDF rather than
+ * editable plain text. WhatsApp's own deep link (wa.me) only ever supports
+ * pre-filled text — there is no link-based way, on any platform, to have a
+ * file already attached when the chat opens; that's a WhatsApp limitation,
+ * not something an app-level integration can work around. The closest
+ * available approximations:
+ *  - Native: the PDF is generated and handed to the OS share sheet, where
+ *    WhatsApp appears as a destination with the file already attached —
+ *    one extra tap (choosing WhatsApp there) versus deep-linking straight
+ *    into it, which the platform doesn't allow for files.
+ *  - Web: there's no share sheet at all, so this opens the browser's print
+ *    dialog to save the PDF, then opens the WhatsApp chat so it's ready —
+ *    the file has to be attached by hand from there.
+ */
+export async function shareStatementViaWhatsApp(input: StatementInput, phone: string | null | undefined, title: string) {
+  if (Platform.OS === "web") {
+    alertMessage(
+      "Save the PDF, then attach it",
+      "The print dialog opens next — choose \"Save as PDF\". WhatsApp will then open so you can attach the saved file to the chat."
+    );
+    await Print.printToFileAsync({ html: buildStatementHtml(input) });
+    await shareViaWhatsApp(`Sending the payment statement PDF for ${input.clientName}.`, phone);
+    return;
+  }
+  try {
+    const { uri } = await Print.printToFileAsync({ html: buildStatementHtml(input) });
+    if (!(await Sharing.isAvailableAsync())) {
+      alertMessage("Sharing unavailable", "This device can't share files.");
+      return;
+    }
+    await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: title, UTI: "com.adobe.pdf" });
+  } catch (err) {
+    alertMessage("Couldn't create PDF", err instanceof Error ? err.message : "Something went wrong");
+  }
 }

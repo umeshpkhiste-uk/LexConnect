@@ -14,7 +14,7 @@ import { DonutChart } from "@/shared/ui/DonutChart";
 import { useTheme } from "@/shared/ui/theme";
 import { ClientTransaction, getReceiptUrl, listTransactionsForCase, listTransactionsForClient } from "./api";
 import { computeFeeTotals } from "./feeTotals";
-import { buildStatement, downloadStatementPdf, shareViaEmail, shareViaSms, shareViaSystem, shareViaWhatsApp, StatementRange } from "./shareStatement";
+import { buildStatement, downloadStatementPdf, shareStatementViaWhatsApp, shareViaEmail, shareViaSms, shareViaSystem, StatementRange } from "./shareStatement";
 
 type SharePeriod = { label: string; range?: StatementRange };
 
@@ -51,7 +51,7 @@ export function LedgerView({ clientId, caseId, variant = "screen" }: Props) {
   const insets = useSafeAreaInsets();
   const [client, setClient] = useState<Client | null>(null);
   const [caseDetail, setCaseDetail] = useState<CaseDetail | null>(null);
-  const [scopeCases, setScopeCases] = useState<{ id: string; agreed_fee: number | null }[]>([]);
+  const [scopeCases, setScopeCases] = useState<{ id: string; title: string; case_number: string | null; agreed_fee: number | null }[]>([]);
   const [transactions, setTransactions] = useState<ClientTransaction[]>([]);
   const [advocateName, setAdvocateName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -145,8 +145,17 @@ export function LedgerView({ clientId, caseId, variant = "screen" }: Props) {
 
   const statementInput = () => ({
     clientName: client.full_name,
+    clientPhone: client.phone,
+    clientEmail: client.email,
+    clientAddress: client.address,
     caseTitle: caseDetail?.title,
     caseNumber: caseDetail?.case_number,
+    caseType: caseDetail?.case_type,
+    court: caseDetail?.court,
+    oppositeParty: caseDetail?.opposite_party,
+    filingDate: caseDetail?.filing_date,
+    agreedFee: caseDetail?.agreed_fee,
+    cases: caseDetail ? undefined : scopeCases.map((c) => ({ title: c.title, caseNumber: c.case_number, agreedFee: c.agreed_fee })),
     advocateName,
     transactions,
     totals: { totalFees: totals.totalFees, received: totals.received, pending: totals.pending },
@@ -178,7 +187,7 @@ export function LedgerView({ clientId, caseId, variant = "screen" }: Props) {
     onPress: () => choosePeriod({ label: monthLabel(m), range: monthRange(m) }),
   }));
   const shareActions: SheetAction[] = [
-    { label: "WhatsApp", icon: "logo-whatsapp", onPress: () => shareViaWhatsApp(statement(), client.phone) },
+    { label: "WhatsApp", icon: "logo-whatsapp", onPress: () => shareStatementViaWhatsApp(statementInput(), client.phone, subject) },
     {
       label: client.email ? `Email (${client.email})` : "Email",
       icon: "mail-outline",
