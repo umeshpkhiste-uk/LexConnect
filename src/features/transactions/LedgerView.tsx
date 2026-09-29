@@ -53,7 +53,11 @@ export function LedgerView({ clientId, caseId, variant = "screen" }: Props) {
   const [caseDetail, setCaseDetail] = useState<CaseDetail | null>(null);
   const [scopeCases, setScopeCases] = useState<{ id: string; title: string; case_number: string | null; agreed_fee: number | null }[]>([]);
   const [transactions, setTransactions] = useState<ClientTransaction[]>([]);
-  const [advocateName, setAdvocateName] = useState<string | null>(null);
+  const [advocate, setAdvocate] = useState<{ name: string | null; phone: string | null; address: string | null }>({
+    name: null,
+    phone: null,
+    address: null,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
@@ -81,7 +85,11 @@ export function LedgerView({ clientId, caseId, variant = "screen" }: Props) {
           setCaseDetail(caseData);
           setScopeCases(caseData ? [caseData] : (clientCases ?? []));
           setTransactions(transactionData as ClientTransaction[]);
-          setAdvocateName(profile?.full_name ?? null);
+          setAdvocate({
+            name: profile?.full_name ?? null,
+            phone: profile?.phone ?? null,
+            address: profile?.chamber_address ?? profile?.address_line ?? null,
+          });
           setError(null);
         })
         .catch((err) => isMounted && setError(err instanceof Error ? err.message : "Something went wrong"))
@@ -156,7 +164,9 @@ export function LedgerView({ clientId, caseId, variant = "screen" }: Props) {
     filingDate: caseDetail?.filing_date,
     agreedFee: caseDetail?.agreed_fee,
     cases: caseDetail ? undefined : scopeCases.map((c) => ({ title: c.title, caseNumber: c.case_number, agreedFee: c.agreed_fee })),
-    advocateName,
+    advocateName: advocate.name,
+    advocatePhone: advocate.phone,
+    advocateAddress: advocate.address,
     transactions,
     totals: { totalFees: totals.totalFees, received: totals.received, pending: totals.pending },
     range: sharePeriod.range,

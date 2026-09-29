@@ -24,6 +24,10 @@ type StatementInput = {
    * agreed fee — so the decided amount per case is still visible. */
   cases?: { title: string; caseNumber: string | null; agreedFee: number | null }[];
   advocateName?: string | null;
+  /** Shown under the advocate's name in the sign-off — never the bar
+   * registration number, which stays out of a client-facing document. */
+  advocatePhone?: string | null;
+  advocateAddress?: string | null;
   transactions: (Transaction & { cases?: { title: string } | null })[];
   /** Fee position from the agreed fees; defaults to summing the entries.
    * Always the running, all-time position — a period statement still shows
@@ -77,6 +81,8 @@ export function buildStatement({
   agreedFee,
   cases,
   advocateName,
+  advocatePhone,
+  advocateAddress,
   transactions,
   totals,
   range,
@@ -124,7 +130,12 @@ export function buildStatement({
               `• ${formatDay(t.transaction_date)} — ${t.category}${!caseTitle && t.cases?.title ? ` (${t.cases.title})` : ""}: ${formatINR(Number(t.amount))} ${t.status === "pending" ? "(due)" : "(received)"}`
           )),
     "",
-    advocateName ? `Regards,\n${advocateName}` : null,
+    advocateName ? `Regards,` : null,
+    advocateName ? advocateName : null,
+    advocateName && advocatePhone ? `Phone: ${advocatePhone}` : null,
+    advocateName && advocateAddress ? `Address: ${advocateAddress}` : null,
+    "",
+    "This is an electronically generated statement — no signature required.",
   ];
   return lines.filter((l) => l !== null).join("\n");
 }
@@ -148,6 +159,8 @@ export function buildStatementHtml({
   agreedFee,
   cases,
   advocateName,
+  advocatePhone,
+  advocateAddress,
   transactions,
   totals,
   range,
@@ -273,12 +286,14 @@ export function buildStatementHtml({
 <meta charset="utf-8" />
 <style>
   body { font-family: -apple-system, Helvetica, Arial, sans-serif; color: #0F172A; padding: 32px; }
-  h1 { font-size: 20px; margin: 0 0 4px; text-align: center; }
+  h1 { font-size: 20px; margin: 0 0 2px; text-align: center; }
+  .doc-type { color: #64748B; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 10px; text-align: center; }
   .subtitle { color: #475569; font-size: 13px; margin: 0 0 4px; text-align: center; }
   .period { color: #64748B; font-size: 12px; margin: 0 0 24px; text-align: center; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .muted { color: #94A3B8; font-size: 12px; }
   .empty { color: #64748B; padding: 24px 0; text-align: center; }
+  .disclaimer { color: #94A3B8; font-size: 11px; margin-top: 12px; font-style: italic; }
   .signoff { margin-top: 32px; font-size: 13px; }
   .as-of { color: #64748B; font-size: 12px; margin: -18px 0 24px; text-align: center; }
   .cards-table { width: 100%; border-collapse: separate; border-spacing: 12px 0; margin: 0 0 24px; }
@@ -311,7 +326,8 @@ export function buildStatementHtml({
 </style>
 </head>
 <body>
-  <h1>${escapeHtml(clientName)} — Statement</h1>
+  <h1>${escapeHtml(clientName)}</h1>
+  <p class="doc-type">Statement</p>
   <p class="subtitle">${[clientPhone ? `Phone: ${clientPhone}` : null, caseTitle ? `Case: ${caseTitle}${caseNumber ? ` (${caseNumber})` : ""}` : null]
     .filter((s): s is string => s !== null)
     .map(escapeHtml)
@@ -320,6 +336,12 @@ export function buildStatementHtml({
     (${escapeHtml(periodLabel ?? "Complete transaction history")}) ·
     ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
   </p>
+
+  <table class="boxes-table"><tr>
+    <td>${detailBox("Client details", [["Name", clientName], ...clientDetailRows])}</td>
+    <td>${detailBox("Case details", caseDetailRows)}</td>
+  </tr></table>
+  ${casesTable}
 
   <table class="cards-table"><tr>
     ${summaryCards
@@ -334,16 +356,19 @@ export function buildStatementHtml({
   </tr></table>
   ${asOf ? `<p class="as-of">Position as of the last transaction, ${escapeHtml(formatDay(asOf))}.</p>` : ""}
 
-  <table class="boxes-table"><tr>
-    <td>${detailBox("Client details", [["Name", clientName], ...clientDetailRows])}</td>
-    <td>${detailBox("Case details", caseDetailRows)}</td>
-  </tr></table>
-  ${casesTable}
-
   <p class="entries-count">No. of entries: ${ledgerRows.length}${periodLabel ? ` (${escapeHtml(periodLabel)})` : ""}</p>
   ${ledgerTable}
 
-  ${advocateName ? `<p class="signoff">Regards,<br />${escapeHtml(advocateName)}</p>` : ""}
+  ${
+    advocateName
+      ? `<p class="signoff">Regards,<br />${escapeHtml(advocateName)}${
+          advocatePhone || advocateAddress
+            ? `<br /><span class="muted">${[advocatePhone, advocateAddress].filter((s): s is string => !!s).map(escapeHtml).join(" · ")}</span>`
+            : ""
+        }</p>`
+      : ""
+  }
+  <p class="disclaimer">This is an electronically generated statement — no signature required.</p>
 </body>
 </html>`;
 }
