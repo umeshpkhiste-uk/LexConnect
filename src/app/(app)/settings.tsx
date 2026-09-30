@@ -131,6 +131,12 @@ export default function SettingsScreen() {
           onPress={handleExportData}
         />
       </SettingsGroup>
+
+      <SettingsGroup title="Legal">
+        <SettingsRow icon="document-text-outline" label="Privacy Policy" onPress={() => router.push("/legal/privacy")} />
+        <SettingsRow icon="reader-outline" label="Terms of Service" onPress={() => router.push("/legal/terms")} />
+        <SettingsRow icon="trash-outline" label="Delete account & data" onPress={() => router.push("/legal/delete-account")} />
+      </SettingsGroup>
     </ScrollView>
   );
 }

@@ -105,6 +105,19 @@ export default function SignUpScreen() {
 
       <Button label="Sign up" onPress={handleSubmit(onSubmit)} loading={isSubmitting} pill />
 
+      <View style={{ height: spacing.md }} />
+      <Text style={[typography.caption, { color: colors.textSecondary, textAlign: "center" }]}>
+        By signing up you agree to our{" "}
+        <Link href="/legal/terms">
+          <Text style={{ color: colors.brand, fontWeight: "600" }}>Terms of Service</Text>
+        </Link>{" "}
+        and{" "}
+        <Link href="/legal/privacy">
+          <Text style={{ color: colors.brand, fontWeight: "600" }}>Privacy Policy</Text>
+        </Link>
+        .
+      </Text>
+
       <View style={{ height: spacing.lg }} />
       <Link href="/(auth)/sign-in">
         <Text style={[typography.caption, { color: colors.textSecondary, textAlign: "center" }]}>
