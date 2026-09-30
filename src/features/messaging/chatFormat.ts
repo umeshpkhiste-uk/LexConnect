@@ -61,10 +61,12 @@ export function buildChatItems<M extends { id: string; created_at: string }>(
 export function messagePreview(message: {
   content: string;
   is_deleted: boolean;
+  is_undecryptable?: boolean;
   attachment_kind: "image" | "file" | null;
   attachment_name?: string | null;
 }): string {
   if (message.is_deleted) return "This message was deleted";
+  if (message.is_undecryptable) return "Message unavailable on this device";
   if (message.content) return message.content;
   if (message.attachment_kind === "image") return "Photo";
   if (message.attachment_kind === "file") return message.attachment_name ?? "File";

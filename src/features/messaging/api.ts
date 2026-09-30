@@ -10,20 +10,29 @@ const ATTACHMENT_BUCKET = "message-attachments";
  * encryption existed). Never exposed outside this file. */
 type EncryptedMessageRow = Message & { nonce: string | null };
 
+type DecryptResult = { content: string; undecryptable: boolean };
+
 /** Decrypts `content` for display, given the sealed text and its nonce.
  * Encryption stays entirely internal to this module, so the rest of the
- * app only ever sees real text. */
-async function decryptText(content: string, nonce: string | null, otherPartyPublicKey: string | null): Promise<string> {
-  if (!nonce || !content) return content;
-  if (!otherPartyPublicKey) return "🔒 Unable to decrypt — the other person hasn't enabled secure messaging yet.";
+ * app only ever sees real text — plus a flag so the UI can tell a genuine
+ * message apart from an explanatory placeholder (different device/key,
+ * or the other person hasn't enabled secure messaging yet) instead of
+ * rendering the placeholder text as if it were normal content. */
+async function decryptText(content: string, nonce: string | null, otherPartyPublicKey: string | null): Promise<DecryptResult> {
+  if (!nonce || !content) return { content, undecryptable: false };
+  if (!otherPartyPublicKey) {
+    return { content: "Unable to decrypt — the other person hasn't enabled secure messaging yet.", undecryptable: true };
+  }
   const plaintext = await decryptFromParty({ content, nonce }, otherPartyPublicKey);
-  return plaintext ?? "🔒 Unable to decrypt this message on this device.";
+  if (plaintext !== null) return { content: plaintext, undecryptable: false };
+  return { content: "Unable to decrypt this message on this device.", undecryptable: true };
 }
 
 /** Decrypts a full message row for display. */
 async function decryptRow(row: EncryptedMessageRow, otherPartyPublicKey: string | null): Promise<Message> {
   const { nonce, ...message } = row;
-  return { ...message, content: await decryptText(message.content, nonce, otherPartyPublicKey) };
+  const { content, undecryptable } = await decryptText(message.content, nonce, otherPartyPublicKey);
+  return { ...message, content, is_undecryptable: undecryptable };
 }
 
 async function currentUserId(): Promise<string> {
@@ -38,6 +47,7 @@ export type ConversationSummary = {
   otherParty: { id: string; full_name: string; profile_photo_url: string | null };
   lastMessage: {
     content: string;
+    is_undecryptable: boolean;
     is_deleted: boolean;
     sender_id: string;
     read_at: string | null;
@@ -100,13 +110,17 @@ export async function listConversations(): Promise<ConversationSummary[]> {
       if (!profile) return null;
       const { messaging_public_key: _messagingPublicKey, ...otherParty } = profile;
       const lastMessage = lastMessageByConversation.get(r.id) ?? null;
+      const decrypted = lastMessage
+        ? await decryptText(lastMessage.content, lastMessage.nonce, publicKeyByOtherId.get(otherId) ?? null)
+        : null;
       return {
         id: r.id,
         last_message_at: r.last_message_at,
         otherParty,
-        lastMessage: lastMessage
+        lastMessage: lastMessage && decrypted
           ? {
-              content: await decryptText(lastMessage.content, lastMessage.nonce, publicKeyByOtherId.get(otherId) ?? null),
+              content: decrypted.content,
+              is_undecryptable: decrypted.undecryptable,
               is_deleted: lastMessage.is_deleted,
               sender_id: lastMessage.sender_id,
               read_at: lastMessage.read_at,
@@ -161,6 +175,11 @@ export type Message = {
   conversation_id: string;
   sender_id: string;
   content: string;
+  /** True when `content` is an explanatory placeholder (a different key/
+   * device decrypted it, or the other person hasn't enabled secure
+   * messaging), not the real message — the UI must never treat this as
+   * normal chat content. Always false for a message sent from this device. */
+  is_undecryptable: boolean;
   is_deleted: boolean;
   read_at: string | null;
   created_at: string;
@@ -253,7 +272,7 @@ export async function sendMessage(
   }
   // We already know the plaintext we just sent — no need to decrypt our own message.
   const { nonce: _nonce, ...saved } = data as EncryptedMessageRow;
-  return { ...saved, content: trimmed };
+  return { ...saved, content: trimmed, is_undecryptable: false };
 }
 
 /** conversationId is needed to look up the recipient's public key to

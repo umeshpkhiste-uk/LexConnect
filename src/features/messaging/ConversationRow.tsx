@@ -37,6 +37,7 @@ export function ConversationRow({ conversation, myId, onPress }: { conversation:
             <Ionicons name={last.attachment_kind === "image" ? "camera" : "document-text"} size={14} color={colors.textSecondary} />
           ) : null}
           {last?.is_deleted ? <Ionicons name="ban-outline" size={14} color={colors.textSecondary} /> : null}
+          {last?.is_undecryptable ? <Ionicons name="lock-closed-outline" size={12} color={colors.textSecondary} /> : null}
           <Text
             style={[
               typography.caption,
@@ -44,12 +45,12 @@ export function ConversationRow({ conversation, myId, onPress }: { conversation:
                 flex: 1,
                 color: unread ? colors.textPrimary : colors.textSecondary,
                 fontWeight: unread ? "600" : "400",
-                fontStyle: last?.is_deleted ? "italic" : "normal",
+                fontStyle: last?.is_deleted || last?.is_undecryptable ? "italic" : "normal",
               },
             ]}
             numberOfLines={1}
           >
-            {last ? messagePreview(last) : "Tap to start chatting"}
+            {last?.is_undecryptable ? "Message unavailable on this device" : last ? messagePreview(last) : "Tap to start chatting"}
           </Text>
           {unread ? (
             <View style={[styles.badge, { backgroundColor: colors.success }]}>

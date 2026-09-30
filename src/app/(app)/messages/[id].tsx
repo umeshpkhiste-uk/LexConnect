@@ -196,6 +196,7 @@ export default function ChatScreen() {
       conversation_id: id,
       sender_id: myId,
       content: text,
+      is_undecryptable: false,
       is_deleted: false,
       read_at: null,
       created_at: new Date().toISOString(),
@@ -290,12 +291,22 @@ export default function ChatScreen() {
       },
     ]);
 
+  const explainUndecryptable = (message: ChatMessage) =>
+    alertMessage(
+      "Message unavailable",
+      `${message.content} This can happen after reinstalling the app or signing in on a new device — messaging keys are generated on-device for end-to-end encryption and never leave it, so a message encrypted before that change can't be recovered. You can keep chatting as normal — new messages aren't affected.`
+    );
+
   const scrollToMessage = (messageId: string) => {
     const index = items.findIndex((i) => i.type === "message" && i.message.id === messageId);
     if (index >= 0) listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
   };
 
   const messageActions = (message: ChatMessage): SheetAction[] => {
+    // Nothing to reply to, copy or edit — it's an explanatory placeholder,
+    // not real content (rendered separately and never long-pressable, but
+    // guarded here too in case this is ever reached another way).
+    if (message.is_undecryptable) return [];
     const isMine = message.sender_id === myId;
     const isSaved = !message.localStatus;
     const actions: SheetAction[] = [];
@@ -435,6 +446,7 @@ export default function ChatScreen() {
               onOpenImage={setViewerUri}
               onOpenFile={() => openFile(message)}
               onRetry={() => retry(message)}
+              onExplainUndecryptable={() => explainUndecryptable(message)}
             />
           );
         }}

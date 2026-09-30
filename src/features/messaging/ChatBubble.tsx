@@ -21,6 +21,7 @@ type Props = {
   onOpenImage: (uri: string) => void;
   onOpenFile: () => void;
   onRetry: () => void;
+  onExplainUndecryptable: () => void;
 };
 
 const READ_BLUE = "#53BDEB";
@@ -38,6 +39,7 @@ export function ChatBubble({
   onOpenImage,
   onOpenFile,
   onRetry,
+  onExplainUndecryptable,
 }: Props) {
   const { colors, typography } = useTheme();
   const fg = isMine ? colors.textInverse : colors.textPrimary;
@@ -54,6 +56,28 @@ export function ChatBubble({
           <Text style={[styles.meta, { color: muted, alignSelf: "flex-end" }]}>{bubbleTime(message.created_at)}</Text>
         </View>
       </View>
+    );
+  }
+
+  // A placeholder explanation, not real content — rendered as a small muted
+  // system note (like a day divider), never as a colored chat bubble, so a
+  // run of these can't be mistaken for actual messages or look like the
+  // chat itself is broken. Tapping it explains why in plain language.
+  if (message.is_undecryptable) {
+    return (
+      <Pressable
+        onPress={onExplainUndecryptable}
+        style={[styles.systemRow, { alignSelf: isMine ? "flex-end" : "flex-start" }]}
+        accessibilityLabel={`${message.content}. Tap to learn more.`}
+      >
+        <View style={[styles.systemPill, { backgroundColor: colors.surfaceAlt }]}>
+          <Ionicons name="lock-closed-outline" size={12} color={colors.textSecondary} />
+          <Text style={[typography.caption, { color: colors.textSecondary, fontStyle: "italic" }]} numberOfLines={1}>
+            Message unavailable on this device
+          </Text>
+          <Text style={[styles.meta, { color: colors.textSecondary }]}>{bubbleTime(message.created_at)}</Text>
+        </View>
+      </Pressable>
     );
   }
 
@@ -178,4 +202,6 @@ const styles = StyleSheet.create({
   fileIcon: { width: 40, height: 40, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   image: { width: 230, height: 230, borderRadius: 12, overflow: "hidden", backgroundColor: "rgba(0,0,0,0.15)" },
   imageOverlay: { alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.3)" },
+  systemRow: { marginHorizontal: 12, marginVertical: 3, maxWidth: "80%" },
+  systemPill: { flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 },
 });
