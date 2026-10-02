@@ -3,7 +3,7 @@ import { View } from "react-native";
 
 const LOGO = require("../../../assets/images/logo.png");
 
-/** The LexConnect emblem (advocate's band in a roundel), transparent corners. */
+/** The LexxBridge emblem (advocate's band in a roundel), transparent corners. */
 export function AppLogo({ size = 72, shadow = true }: { size?: number; shadow?: boolean }) {
   return (
     <View
@@ -20,7 +20,7 @@ export function AppLogo({ size = 72, shadow = true }: { size?: number; shadow?: 
           : undefined
       }
     >
-      <Image source={LOGO} style={{ width: size, height: size }} contentFit="contain" accessibilityLabel="LexConnect logo" />
+      <Image source={LOGO} style={{ width: size, height: size }} contentFit="contain" accessibilityLabel="LexxBridge logo" />
     </View>
   );
 }

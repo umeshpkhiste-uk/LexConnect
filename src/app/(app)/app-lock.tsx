@@ -80,7 +80,7 @@ export default function AppLockScreen() {
       go({ kind: "menu" });
       alertMessage(
         step.method === "pin" ? "PIN set successfully" : "Pattern registered successfully",
-        `LexConnect will ask for your ${step.method === "pin" ? "PIN" : "pattern"} when you open the app.`,
+        `LexxBridge will ask for your ${step.method === "pin" ? "PIN" : "pattern"} when you open the app.`,
       );
     }
   };
@@ -106,7 +106,7 @@ export default function AppLockScreen() {
             {current ? `App lock is on (${current.method === "pin" ? "PIN" : "Pattern"})` : "App lock is off"}
           </Text>
           <Text style={[typography.caption, { color: colors.textSecondary, textAlign: "center", marginTop: 4 }]}>
-            Ask for a PIN or pattern every time LexConnect is opened. Stored securely on this phone only.
+            Ask for a PIN or pattern every time LexxBridge is opened. Stored securely on this phone only.
           </Text>
         </View>
 

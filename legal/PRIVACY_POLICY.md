@@ -2,9 +2,9 @@
 
 **Last updated: 30 September 2026**
 
-This Privacy Policy explains how LexConnect ("LexConnect", "we", "us") collects,
-uses and protects information when you use the LexConnect app and website
-(together, the "Service"). LexConnect is a practice-management tool for
+This Privacy Policy explains how LexxBridge ("LexxBridge", "we", "us") collects,
+uses and protects information when you use the LexxBridge app and website
+(together, the "Service"). LexxBridge is a practice-management tool for
 advocates and lawyers to manage clients, cases, hearings, tasks, payments and
 messaging.
 
@@ -17,7 +17,7 @@ reachable without signing in, as required for the Google Play Store listing.
 
 ## 1. Who we are
 
-LexConnect is developed and operated by **[Your company / developer name]**.
+LexxBridge is developed and operated by **[Your company / developer name]**.
 Contact us at **[support@yourdomain.com]** for any privacy question or
 request.
 
@@ -45,7 +45,7 @@ request.
   and error logs, used to keep the Service reliable.
 - **Biometric authentication**: if you enable Face ID / fingerprint / Touch
   ID login, your device's operating system handles the biometric match
-  locally. LexConnect never receives, stores or transmits biometric data —
+  locally. LexxBridge never receives, stores or transmits biometric data —
   it only receives a yes/no "authenticated" result from your device.
 
 We do **not** collect location data and do not use advertising SDKs or
@@ -82,7 +82,7 @@ case data to train any third-party AI model.
 - We do not share your client, case or financial data with any other third
   party, and we do not sell personal information to anyone.
 - We may disclose information if required by law, or to protect the rights,
-  property or safety of LexConnect, our users, or the public.
+  property or safety of LexxBridge, our users, or the public.
 
 ## 5. Data security
 
@@ -123,7 +123,7 @@ our normal backup rotation schedule.
 
 ## 8. Children's privacy
 
-LexConnect is intended for licensed advocates, lawyers and legal
+LexxBridge is intended for licensed advocates, lawyers and legal
 professionals and is not directed at children. We do not knowingly collect
 information from anyone under 18.
 

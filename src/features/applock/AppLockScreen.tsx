@@ -56,7 +56,7 @@ export function AppLockScreen({ userId, mode = "unlock", onUnlock, onSignedOut }
   };
 
   const tryBiometric = async (label: string) => {
-    if (await authenticateBiometric(`Unlock LexConnect with ${label}`)) {
+    if (await authenticateBiometric(`Unlock LexxBridge with ${label}`)) {
       await resetAppLockFailures(userId);
       onUnlock();
     }
@@ -98,13 +98,13 @@ export function AppLockScreen({ userId, mode = "unlock", onUnlock, onSignedOut }
       setMessage(`App locked after ${MAX_ATTEMPTS} wrong attempts.`);
       // Security notice on the phone (where notifications are available).
       presentNow(
-        "LexConnect locked",
+        "LexxBridge locked",
         `Someone entered the wrong ${what} ${MAX_ATTEMPTS} times. Log in with your password to continue.`,
         { kind: "security" },
       ).catch(() => {});
       Alert.alert(
         "App locked",
-        `The wrong ${what} was entered ${MAX_ATTEMPTS} times, so LexConnect has been locked for your security. Please log in with your email and password.`,
+        `The wrong ${what} was entered ${MAX_ATTEMPTS} times, so LexxBridge has been locked for your security. Please log in with your email and password.`,
         [{ text: "Log in with password", onPress: lockOut }],
         { cancelable: false },
       );
@@ -139,7 +139,7 @@ export function AppLockScreen({ userId, mode = "unlock", onUnlock, onSignedOut }
             <Ionicons name="lock-closed" size={13} color="#FFFFFF" />
           </View>
         </View>
-        <Text style={[typography.title, { color: colors.textPrimary, marginTop: spacing.md }]}>LexConnect is locked</Text>
+        <Text style={[typography.title, { color: colors.textPrimary, marginTop: spacing.md }]}>LexxBridge is locked</Text>
         <Text style={[typography.body, { color: message ? colors.danger : colors.textSecondary, marginTop: spacing.xs, textAlign: "center" }]}>
           {message ?? hint}
         </Text>

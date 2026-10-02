@@ -73,7 +73,7 @@ export function PresenceProvider({ children }: PropsWithChildren) {
   return <OnlineContext.Provider value={onlineIds}>{children}</OnlineContext.Provider>;
 }
 
-/** True when the advocate currently has LexConnect open. */
+/** True when the advocate currently has LexxBridge open. */
 export function useIsOnline(userId: string | null | undefined): boolean {
   const online = useContext(OnlineContext);
   return !!userId && online.has(userId);

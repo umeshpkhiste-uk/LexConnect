@@ -168,7 +168,7 @@ export default function PublicProfileScreen() {
         <Ionicons name="lock-closed-outline" size={32} color={colors.textSecondary} />
         <Text style={[typography.subtitle, { color: colors.textPrimary, marginTop: spacing.sm }]}>Profile not available</Text>
         <Text style={[typography.body, { color: colors.textSecondary, textAlign: "center", marginTop: spacing.xs }]}>
-          This advocate&apos;s profile is private or no longer on LexConnect.
+          This advocate&apos;s profile is private or no longer on LexxBridge.
         </Text>
       </ScreenContainer>
     );

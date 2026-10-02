@@ -4,11 +4,11 @@ Google Play requires that any app allowing account creation also offer a
 way to delete the account and its data — reachable both **inside the app**
 and from a **public web page**, without needing to log in first. This file
 is the source for that public page (rendered at `/legal/delete-account`,
-e.g. `https://lexconnect.netlify.app/legal/delete-account`).
+e.g. `https://lexxbridge.netlify.app/legal/delete-account`).
 
 ## Option 1 — delete it yourself, in the app (immediate)
 
-1. Open LexConnect and sign in.
+1. Open LexxBridge and sign in.
 2. Go to **Profile → Settings → Delete account** (bottom of the Account
    section).
 3. Confirm twice. This is permanent and cannot be undone.

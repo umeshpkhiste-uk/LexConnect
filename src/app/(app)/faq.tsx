@@ -22,7 +22,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "How does Face ID / fingerprint login work?",
-    a: "Turn it on from Profile → Preferences. After that, LexConnect asks for your Face ID or fingerprint when you open the app, and after you log out you can log back in with it instead of your password.",
+    a: "Turn it on from Profile → Preferences. After that, LexxBridge asks for your Face ID or fingerprint when you open the app, and after you log out you can log back in with it instead of your password.",
   },
   {
     q: "How do I turn off notifications?",

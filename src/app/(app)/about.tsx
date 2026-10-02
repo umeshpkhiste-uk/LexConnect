@@ -24,7 +24,7 @@ export default function AboutScreen() {
     >
       <View style={{ alignItems: "center", paddingVertical: spacing.lg }}>
         <AppLogo size={96} />
-        <Text style={[typography.title, { color: colors.textPrimary, marginTop: spacing.md }]}>LexConnect</Text>
+        <Text style={[typography.title, { color: colors.textPrimary, marginTop: spacing.md }]}>LexxBridge</Text>
         <Text style={[typography.caption, { color: colors.textSecondary, marginTop: spacing.xs }]}>Version {version}</Text>
         <Text
           style={[typography.body, { color: colors.textSecondary, textAlign: "center", marginTop: spacing.md, paddingHorizontal: spacing.lg }]}
@@ -40,7 +40,7 @@ export default function AboutScreen() {
       </SettingsGroup>
 
       <Text style={[typography.caption, { color: colors.textSecondary, textAlign: "center" }]}>
-        © {new Date().getFullYear()} LexConnect. All rights reserved.
+        © {new Date().getFullYear()} LexxBridge. All rights reserved.
       </Text>
     </ScrollView>
   );

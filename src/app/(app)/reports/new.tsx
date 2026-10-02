@@ -60,7 +60,7 @@ export default function NewReportScreen() {
         Report {label ?? targetType}
       </Text>
       <Text style={[typography.body, { color: colors.textSecondary, marginBottom: spacing.lg }]}>
-        Tell us what&apos;s wrong. Reports are reviewed by LexConnect.
+        Tell us what&apos;s wrong. Reports are reviewed by LexxBridge.
       </Text>
 
       <TextField

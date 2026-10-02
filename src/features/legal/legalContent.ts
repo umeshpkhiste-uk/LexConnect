@@ -15,7 +15,7 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
   {
     heading: "1. Who we are",
     paragraphs: [
-      `LexConnect is developed and operated by ${COMPANY_NAME}. Contact us at ${SUPPORT_EMAIL} for any privacy question or request.`,
+      `LexxBridge is developed and operated by ${COMPANY_NAME}. Contact us at ${SUPPORT_EMAIL} for any privacy question or request.`,
     ],
   },
   {
@@ -73,7 +73,7 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
   {
     heading: "8. Children's privacy",
     paragraphs: [
-      "LexConnect is intended for licensed advocates, lawyers and legal professionals, and is not directed at children. We do not knowingly collect information from anyone under 18.",
+      "LexxBridge is intended for licensed advocates, lawyers and legal professionals, and is not directed at children. We do not knowingly collect information from anyone under 18.",
     ],
   },
   {
@@ -96,9 +96,9 @@ export const PRIVACY_SECTIONS: LegalSection[] = [
 
 export const TERMS_SECTIONS: LegalSection[] = [
   {
-    heading: "1. Who can use LexConnect",
+    heading: "1. Who can use LexxBridge",
     paragraphs: [
-      "LexConnect is intended for licensed advocates, lawyers and legal professionals to manage clients, cases, hearings, tasks, payments and professional networking. You must be at least 18 and able to form a binding contract to use the Service, and you're responsible for the accuracy of the professional information you provide.",
+      "LexxBridge is intended for licensed advocates, lawyers and legal professionals to manage clients, cases, hearings, tasks, payments and professional networking. You must be at least 18 and able to form a binding contract to use the Service, and you're responsible for the accuracy of the professional information you provide.",
     ],
   },
   {
@@ -130,7 +130,7 @@ export const TERMS_SECTIONS: LegalSection[] = [
   {
     heading: "6. Payments and fee records",
     paragraphs: [
-      "Payment/fee-ledger features are record-keeping tools for amounts you and your clients agree upon and receive. LexConnect does not process, hold or transmit any actual money, and is not a payment processor, escrow agent, or party to any fee arrangement between you and your clients.",
+      "Payment/fee-ledger features are record-keeping tools for amounts you and your clients agree upon and receive. LexxBridge does not process, hold or transmit any actual money, and is not a payment processor, escrow agent, or party to any fee arrangement between you and your clients.",
     ],
   },
   {
@@ -148,13 +148,13 @@ export const TERMS_SECTIONS: LegalSection[] = [
   {
     heading: "9. Disclaimers",
     paragraphs: [
-      "The Service is provided \"as is\" without warranties of any kind. LexConnect is a practice-management tool, not a source of legal advice, and doesn't review, verify or take responsibility for the legal accuracy of anything you record in it.",
+      "The Service is provided \"as is\" without warranties of any kind. LexxBridge is a practice-management tool, not a source of legal advice, and doesn't review, verify or take responsibility for the legal accuracy of anything you record in it.",
     ],
   },
   {
     heading: "10. Limitation of liability",
     paragraphs: [
-      "To the maximum extent permitted by law, LexConnect and its developers are not liable for indirect, incidental, special or consequential damages, or for loss of data, profits or business, arising from your use of the Service.",
+      "To the maximum extent permitted by law, LexxBridge and its developers are not liable for indirect, incidental, special or consequential damages, or for loss of data, profits or business, arising from your use of the Service.",
     ],
   },
   {
@@ -171,7 +171,7 @@ export const DELETE_ACCOUNT_SECTIONS: LegalSection[] = [
   {
     heading: "Option 1 — delete it yourself, in the app (immediate)",
     paragraphs: [
-      "1. Open LexConnect and sign in.",
+      "1. Open LexxBridge and sign in.",
       "2. Go to Profile → Settings → Delete account (bottom of the Account section).",
       "3. Confirm twice. This is permanent and cannot be undone.",
       "This immediately and permanently deletes your profile and login credentials; every client and case you created; hearings, tasks, meetings and notes; payment/fee-ledger records; documents and photos you uploaded; posts, comments and reactions; and chat messages, connections and notifications.",

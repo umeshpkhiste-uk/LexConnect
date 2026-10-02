@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "LexConnect",
+    "name": "LexxBridge",
     "slug": "CounselConnect",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -13,9 +13,9 @@
       "buildNumber": "1",
       "supportsTablet": true,
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "LexConnect needs access to your photos so you can attach images to posts, chats, receipts and client profiles.",
+        "NSPhotoLibraryUsageDescription": "LexxBridge needs access to your photos so you can attach images to posts, chats, receipts and client profiles.",
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "LexConnect needs camera access so you can take photos for posts, chats and payment receipts."
+        "NSCameraUsageDescription": "LexxBridge needs camera access so you can take photos for posts, chats and payment receipts."
       }
     },
     "android": {
@@ -32,8 +32,8 @@
     "web": {
       "output": "single",
       "favicon": "./assets/images/favicon.png",
-      "name": "LexConnect",
-      "shortName": "LexConnect",
+      "name": "LexxBridge",
+      "shortName": "LexxBridge",
       "themeColor": "#1E3A5F",
       "backgroundColor": "#F8FAFC"
     },
@@ -54,15 +54,15 @@
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "LexConnect uses Face ID so you can unlock the app and log in without typing your password."
+          "faceIDPermission": "LexxBridge uses Face ID so you can unlock the app and log in without typing your password."
         }
       ],
       "@react-native-community/datetimepicker",
       [
         "expo-image-picker",
         {
-          "photosPermission": "LexConnect needs access to your photos so you can attach images to posts, chats, receipts and client profiles.",
-          "cameraPermission": "LexConnect needs camera access so you can take photos for posts, chats and payment receipts."
+          "photosPermission": "LexxBridge needs access to your photos so you can attach images to posts, chats, receipts and client profiles.",
+          "cameraPermission": "LexxBridge needs camera access so you can take photos for posts, chats and payment receipts."
         }
       ],
       "expo-video",

@@ -1,8 +1,8 @@
-# LexConnect
+# LexxBridge
 
 **The Professional Network & Practice Platform for Advocates.**
 
-LexConnect (formerly CounselConnect) combines advocate practice management (clients, cases,
+LexxBridge (formerly LexConnect, formerly CounselConnect) combines advocate practice management (clients, cases,
 hearings, documents, finances) with a professional network for advocates
 across India. See `CounselConnect Master Development Prompt.pdf` (in the
 parent folder) for the full product specification.
@@ -76,7 +76,7 @@ Android/iOS builds, and what still needs your accounts.
 
 ```bash
 git add -A
-git commit -m "LexConnect app"
+git commit -m "LexxBridge app"
 git branch -M main
 git remote add origin https://github.com/<your-username>/<your-repo>.git
 git push -u origin main
@@ -101,8 +101,8 @@ settings typed in by hand.
    redeploy after changing them).
 3. Deploy. Every push to `main` redeploys automatically.
 4. In **Supabase → Authentication → URL Configuration**, set **Site URL**
-   to your Netlify address (e.g. `https://lexconnect.netlify.app`) and add
-   `https://lexconnect.netlify.app/**` to **Redirect URLs**, so sign-up
+   to your Netlify address (e.g. `https://lexxbridge.netlify.app`) and add
+   `https://lexxbridge.netlify.app/**` to **Redirect URLs**, so sign-up
    confirmation and password-reset emails open the website.
 
 Build the web version locally with `npm run build:web` (output in `dist/`).

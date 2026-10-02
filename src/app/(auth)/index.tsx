@@ -22,7 +22,7 @@ import { useAppWidth } from "@/shared/ui/appFrame";
 import { useTheme } from "@/shared/ui/theme";
 
 const SLIDES = [
-  { title: "LexConnect", body: "Create an account to start your practice journey" },
+  { title: "LexxBridge", body: "Create an account to start your practice journey" },
   { title: "Grow your network", body: "Connect with advocates, chambers and firms across the bar" },
   { title: "Run your practice", body: "Track matters, hearings and clients in one place" },
   { title: "Stay on schedule", body: "Never miss a date with your hearing calendar" },
@@ -137,7 +137,7 @@ export default function WelcomeScreen() {
           <View style={[styles.lockHint, { backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: spacing.sm }]}>
             <Ionicons name="lock-closed-outline" size={16} color={colors.brand} />
             <Text style={[typography.caption, { color: colors.textSecondary, flex: 1 }]}>
-              Your {lockHint === "pin" ? "PIN" : "pattern"} is set on this phone. Log in once with your password and LexConnect will ask for
+              Your {lockHint === "pin" ? "PIN" : "pattern"} is set on this phone. Log in once with your password and LexxBridge will ask for
               your {lockHint === "pin" ? "PIN" : "pattern"} from then on.
             </Text>
           </View>

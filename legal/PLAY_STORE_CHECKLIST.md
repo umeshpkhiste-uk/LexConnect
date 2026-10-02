@@ -31,9 +31,9 @@ the corresponding `src/app/legal/*.tsx` screens to find them all.
 
 ### 2. Deploy the legal pages so the URLs are live
 The Netlify web build already serves these at:
-- `https://lexconnect.netlify.app/legal/privacy`
-- `https://lexconnect.netlify.app/legal/terms`
-- `https://lexconnect.netlify.app/legal/delete-account`
+- `https://lexxbridge.netlify.app/legal/privacy`
+- `https://lexxbridge.netlify.app/legal/terms`
+- `https://lexxbridge.netlify.app/legal/delete-account`
 
 Confirm your actual Netlify domain and use that exact URL in Play Console.
 Google reviews the Privacy Policy URL, so double-check it loads without

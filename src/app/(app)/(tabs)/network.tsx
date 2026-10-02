@@ -477,7 +477,7 @@ export default function NetworkScreen() {
                     {search.trim() ? "Search results" : chip ? chip : "Find colleagues"}
                   </Text>
                   <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                    {search.trim() || chip ? `${discoverList.length} advocate${discoverList.length === 1 ? "" : "s"}` : "Advocates you may know on LexConnect"}
+                    {search.trim() || chip ? `${discoverList.length} advocate${discoverList.length === 1 ? "" : "s"}` : "Advocates you may know on LexxBridge"}
                   </Text>
                 </View>
                 {chip ? (

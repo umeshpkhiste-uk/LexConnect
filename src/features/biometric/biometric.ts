@@ -110,7 +110,7 @@ export async function loginWithBiometric(label: string): Promise<{ error: string
   const token = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
   if (!token) return { error: "Log in with your password first." };
 
-  const ok = await authenticateBiometric(`Log in to LexConnect with ${label}`);
+  const ok = await authenticateBiometric(`Log in to LexxBridge with ${label}`);
   if (!ok) return { error: null };
 
   const { error } = await supabase.auth.refreshSession({ refresh_token: token });

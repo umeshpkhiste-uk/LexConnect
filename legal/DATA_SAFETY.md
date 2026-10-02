@@ -1,6 +1,6 @@
 # Google Play "Data safety" form — answers
 
-This maps LexConnect's actual data handling to the questions Google Play
+This maps LexxBridge's actual data handling to the questions Google Play
 Console asks under **App content → Data safety**. Use these answers when
 filling out the form; update this file first if data handling changes.
 
@@ -43,7 +43,7 @@ filling out the form; update this file first if data handling changes.
 ## Notes for whoever fills out the Play Console form
 
 - Biometric authentication (Face ID / fingerprint) is handled entirely by
-  the OS on-device; LexConnect never receives or transmits biometric data,
+  the OS on-device; LexxBridge never receives or transmits biometric data,
   so it should **not** be declared as a collected data type.
 - Chat messages are end-to-end encrypted — mark messages as "collected" but
   note in the description that message content is encrypted and not

@@ -76,7 +76,7 @@ export default function BasicInfoScreen() {
         <View style={{ backgroundColor: colors.brand, borderRadius: radius.lg, padding: spacing.md, flexDirection: "row", gap: spacing.md }}>
           <Ionicons name="sparkles-outline" size={24} color={colors.accent} />
           <View style={{ flex: 1 }}>
-            <Text style={[typography.subtitle, { color: "#FFFFFF" }]}>Welcome to LexConnect</Text>
+            <Text style={[typography.subtitle, { color: "#FFFFFF" }]}>Welcome to LexxBridge</Text>
             <Text style={[typography.caption, { color: "rgba(255,255,255,0.8)", marginTop: 2 }]}>
               Set up your profile docket so colleagues can find you. You can change any of this later from Profile → Basic information.
             </Text>

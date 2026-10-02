@@ -2,18 +2,18 @@
 
 **Last updated: 30 September 2026**
 
-These Terms of Service ("Terms") govern your use of the LexConnect app and
+These Terms of Service ("Terms") govern your use of the LexxBridge app and
 website (the "Service"), operated by **[Your company / developer name]**
-("LexConnect", "we", "us"). By creating an account or using the Service, you
+("LexxBridge", "we", "us"). By creating an account or using the Service, you
 agree to these Terms.
 
 > ⚠️ Replace the placeholders marked `[ ]` below (company/developer name,
 > support email, jurisdiction/governing law) with your real details before
 > submitting to Google Play or the App Store.
 
-## 1. Who can use LexConnect
+## 1. Who can use LexxBridge
 
-LexConnect is intended for licensed advocates, lawyers and legal
+LexxBridge is intended for licensed advocates, lawyers and legal
 professionals to manage their practice — clients, cases, hearings, tasks,
 payments and professional networking. You must be at least 18 years old and
 able to form a binding contract to use the Service. You are responsible for
@@ -66,8 +66,8 @@ responsible for the content or conduct of other users.
 
 ## 6. Payments and fee records
 
-Payment/fee-ledger features in LexConnect are record-keeping tools for
-tracking amounts you and your clients agree upon and receive. LexConnect
+Payment/fee-ledger features in LexxBridge are record-keeping tools for
+tracking amounts you and your clients agree upon and receive. LexxBridge
 does not process, hold or transmit any actual money — it does not act as a
 payment processor, escrow agent, or party to any fee arrangement between
 you and your clients.
@@ -88,7 +88,7 @@ terminate accounts that violate these Terms.
 
 ## 9. Disclaimers
 
-The Service is provided "as is" without warranties of any kind. LexConnect
+The Service is provided "as is" without warranties of any kind. LexxBridge
 is a practice-management tool, not a source of legal advice, and does not
 review, verify or take responsibility for the legal accuracy of anything
 you record in it. We do not warrant that the Service will be error-free or
@@ -96,7 +96,7 @@ uninterrupted.
 
 ## 10. Limitation of liability
 
-To the maximum extent permitted by law, LexConnect and its developers will
+To the maximum extent permitted by law, LexxBridge and its developers will
 not be liable for any indirect, incidental, special or consequential
 damages, or for loss of data, profits or business, arising from your use of
 the Service.

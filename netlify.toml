@@ -1,4 +1,4 @@
-# Netlify: builds the web version of LexConnect (Expo web) and serves it as a
+# Netlify: builds the web version of LexxBridge (Expo web) and serves it as a
 # single-page app. Set these in Netlify → Site configuration → Environment
 # variables (they are baked into the build; the anon key is public by design):
 #   EXPO_PUBLIC_SUPABASE_URL

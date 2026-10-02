@@ -45,7 +45,7 @@ export default function SignInScreen() {
         Log in
       </Text>
       <Text style={[typography.body, { color: colors.textSecondary, marginBottom: spacing.xl, textAlign: "center" }]}>
-        Login to access your LexConnect account.
+        Login to access your LexxBridge account.
       </Text>
 
       <Controller
@@ -99,7 +99,7 @@ export default function SignInScreen() {
       <View style={{ height: spacing.lg }} />
       <Link href="/(auth)/sign-up">
         <Text style={[typography.caption, { color: colors.textSecondary, textAlign: "center" }]}>
-          New to LexConnect? <Text style={{ color: colors.brand, fontWeight: "600" }}>Create an account</Text>
+          New to LexxBridge? <Text style={{ color: colors.brand, fontWeight: "600" }}>Create an account</Text>
         </Text>
       </Link>
     </ScreenContainer>

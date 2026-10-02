@@ -58,7 +58,7 @@ export default function AppLayout() {
         <Stack.Screen name="settings" options={{ headerShown: true, title: "Settings" }} />
         <Stack.Screen name="language" options={{ headerShown: true, title: "Language" }} />
         <Stack.Screen name="app-lock" options={{ headerShown: true, title: "App lock" }} />
-        <Stack.Screen name="about" options={{ headerShown: true, title: "About LexConnect" }} />
+        <Stack.Screen name="about" options={{ headerShown: true, title: "About LexxBridge" }} />
         <Stack.Screen name="faq" options={{ headerShown: true, title: "FAQ" }} />
         {/* Draws its own header (client + case summary) with a back arrow. */}
         <Stack.Screen name="ledger" />

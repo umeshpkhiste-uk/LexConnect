@@ -48,7 +48,7 @@ export default function SettingsScreen() {
       setThemePref(pref);
       setThemePreference(pref);
     };
-    confirmAlert("Theme", "Choose how LexConnect looks.", [
+    confirmAlert("Theme", "Choose how LexxBridge looks.", [
       { text: themePreferenceLabel.system, onPress: choose("system") },
       { text: themePreferenceLabel.light, onPress: choose("light") },
       { text: themePreferenceLabel.dark, onPress: choose("dark") },
@@ -71,7 +71,7 @@ export default function SettingsScreen() {
     if (await authenticateBiometric(`Enable ${support.label} login`)) {
       await enableBiometric(userId, email);
       setBiometric((b) => ({ ...b, enabled: true }));
-      alertMessage(`${support.label} enabled`, `Next time you open LexConnect or log back in, use ${support.label} instead of your password.`);
+      alertMessage(`${support.label} enabled`, `Next time you open LexxBridge or log back in, use ${support.label} instead of your password.`);
     }
   };
 
@@ -86,11 +86,11 @@ export default function SettingsScreen() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = "lexconnect-data-export.json";
+        link.download = "lexxbridge-data-export.json";
         link.click();
         URL.revokeObjectURL(url);
       } else {
-        await Share.share({ title: "LexConnect data export", message: json });
+        await Share.share({ title: "LexxBridge data export", message: json });
       }
     } catch (err) {
       alertMessage("Export failed", err instanceof Error ? err.message : "Something went wrong");
