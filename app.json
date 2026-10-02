@@ -1,15 +1,15 @@
 {
   "expo": {
     "name": "LexxBridge",
-    "slug": "CounselConnect",
+    "slug": "LexxBridge",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "counselconnect",
+    "scheme": "lexxbridge",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/images/icon.png",
-      "bundleIdentifier": "com.counselconnect.app",
+      "bundleIdentifier": "com.lexxbridge.app",
       "buildNumber": "1",
       "supportsTablet": true,
       "infoPlist": {
@@ -19,7 +19,7 @@
       }
     },
     "android": {
-      "package": "com.counselconnect.app",
+      "package": "com.lexxbridge.app",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#EEF1F5",

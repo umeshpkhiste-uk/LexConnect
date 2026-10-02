@@ -76,7 +76,7 @@ Every migration in this project has been applied to a single Supabase
 project (the one linked via `.env`) for the entire build. Spec §48 wants
 separate dev/test/prod environments. To split them before launch:
 
-1. Create a second Supabase project ("CounselConnect Production").
+1. Create a second Supabase project ("LexxBridge Production").
 2. Apply every file in `supabase/migrations/` to it, in order (same
    commands as `docs/BACKEND_SETUP.md`).
 3. Put its URL/anon key in EAS secrets as `EXPO_PUBLIC_SUPABASE_URL_PRODUCTION`
@@ -93,10 +93,10 @@ billing plan) is your call, not something to do silently.
 
 Configured, not yet run:
 
-- `app.json` now has real identifiers: `com.counselconnect.app` for both
+- `app.json` now has real identifiers: `com.lexxbridge.app` for both
   `ios.bundleIdentifier` and `android.package`, version 1.0.0,
   `buildNumber`/`versionCode` 1, and an `NSPhotoLibraryUsageDescription`
-  for the post-image picker. **`com.counselconnect.app` is a placeholder —
+  for the post-image picker. **`com.lexxbridge.app` is a placeholder —
   change it before your first store submission if you don't control that
   domain; bundle identifiers can't be changed once published.**
 - `eas.json` has `development`/`preview`/`production` build profiles.

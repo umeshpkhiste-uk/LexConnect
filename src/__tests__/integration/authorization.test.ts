@@ -44,8 +44,8 @@ describeIfConfigured("cross-tenant authorization (spec §57)", () => {
   let privateClientId: string;
   let privateCaseId: string;
 
-  const emailA = `test-a-${Date.now()}@counselconnect.test`;
-  const emailB = `test-b-${Date.now()}@counselconnect.test`;
+  const emailA = `test-a-${Date.now()}@lexxbridge.test`;
+  const emailB = `test-b-${Date.now()}@lexxbridge.test`;
   const password = "TestPassword1";
 
   beforeAll(async () => {

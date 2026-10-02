@@ -1,6 +1,6 @@
 # Backend setup (Supabase)
 
-CounselConnect uses [Supabase](https://supabase.com) for Postgres, authentication,
+LexxBridge uses [Supabase](https://supabase.com) for Postgres, authentication,
 storage, and (later) realtime/edge functions. The mobile app talks to it via
 `@supabase/supabase-js`; no separate custom API server exists yet.
 
@@ -50,7 +50,7 @@ Current migrations (Phase 1):
 
 In the Supabase dashboard: Authentication -> Providers -> Email should
 already be enabled by default. Under Authentication -> URL Configuration,
-add `counselconnect://` as a redirect URL (used by the password-reset flow
+add `lexxbridge://` as a redirect URL (used by the password-reset flow
 in `src/features/auth/api.ts`).
 
 Email confirmation is on by default, which is why sign-up routes to

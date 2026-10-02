@@ -8,7 +8,7 @@ export type AuthResult = { error: string | null };
  * the app on phones, or the site they signed up on in a browser. */
 function authRedirect(path: "verify-email" | "reset-password"): string {
   if (Platform.OS === "web" && typeof window !== "undefined") return `${window.location.origin}/${path}`;
-  return `counselconnect://${path}`;
+  return `lexxbridge://${path}`;
 }
 
 export async function signUpWithEmail(params: {

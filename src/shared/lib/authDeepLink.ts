@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 
 /**
  * Both the email-confirmation link (sign-up) and the password-reset link
- * redirect back into the app as `counselconnect://<path>?code=...` (PKCE).
+ * redirect back into the app as `lexxbridge://<path>?code=...` (PKCE).
  * Clicking the link only verifies the token server-side; it does NOT log the
  * device in by itself — supabase-js needs the `code` exchanged for a real
  * session, which normally happens automatically via detectSessionInUrl on
